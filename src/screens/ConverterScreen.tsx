@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Platform,
@@ -9,12 +10,14 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { getRates, convert, Rates } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
+import NumPad from '../components/NumPad';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
 
 export default function ConverterScreen() {
@@ -24,6 +27,7 @@ export default function ConverterScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [isNewInput, setIsNewInput] = useState(true);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [lastFetched, setLastFetched] = useState<string>('');
@@ -71,22 +75,79 @@ export default function ConverterScreen() {
     setValues(newValues);
   }
 
-  function handleChangeText(slotIdx: number, text: string) {
-    // Only allow digits and a single decimal point
-    if (!/^\d*\.?\d*$/.test(text)) {
+  function handleFocus(slotIdx: number) {
+    setActiveSlot(slotIdx);
+    setIsNewInput(true);
+  }
+
+  // Append a key (digit, '.', or '00') to the active slot's value
+  function handleNumPadKey(key: string) {
+    let current = values[activeSlot] || '';
+
+    // If typing right after focusing, replace the existing value
+    if (isNewInput) {
+      if (key === '0' || key === '00') return; // Block leading zeros on fresh focus
+      
+      let next = '';
+      if (key === '.') {
+        next = '0.';
+      } else {
+        next = key;
+      }
+      
+      setIsNewInput(false);
+      if (rates) recalculate(activeSlot, next, slots, rates);
       return;
     }
 
-    // Prevent more than two decimal places
-    if (text.includes('.')) {
-      const [_, decimal] = text.split('.');
-      if (decimal && decimal.length > 2) {
-        return;
+    // If field is empty or just '0', handle leading characters carefully
+    if (current === '' || current === '0') {
+      if (key === '0' || key === '00') return; // Block redundant zeros
+      if (key === '.') {
+        current = '0'; // will become '0.'
+      } else {
+        current = ''; // replace '0' with the new digit
       }
     }
-    
-    setActiveSlot(slotIdx);
-    if (rates) recalculate(slotIdx, text, slots, rates);
+
+    // Prevent multiple decimal points
+    if (key === '.' && current.includes('.')) return;
+
+    // Limit to two decimal places
+    if (current.includes('.')) {
+      const decimalPart = current.split('.')[1] || '';
+      if (key === '00' && decimalPart.length >= 1) return;
+      if (decimalPart.length >= 2) return;
+    }
+
+    const next = current + key;
+
+    // Limit to 15 characters
+    if (next.length > 15) {
+      const msg = 'Maximum limit reached (15 digits)';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(msg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Limit Reached', msg);
+      }
+      return;
+    }
+
+    if (rates) recalculate(activeSlot, next, slots, rates);
+  }
+
+  // Remove the last character from the active slot's value
+  function handleBackspace() {
+    setIsNewInput(false);
+    const current = values[activeSlot] || '';
+    const next = current.slice(0, -1);
+    if (rates) recalculate(activeSlot, next, slots, rates);
+  }
+
+  // Clear the active slot's value entirely
+  function handleClear() {
+    setIsNewInput(false);
+    if (rates) recalculate(activeSlot, '', slots, rates);
   }
 
   function openPicker(slotIdx: number) {
@@ -133,28 +194,35 @@ export default function ConverterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>RateFlip</Text>
-      <Text style={styles.appSubtitle}>Currency Converter</Text>
-      <Text style={styles.subtitle}>Rates updated: {lastFetched}</Text>
+      <View style={styles.topContent}>
+        <Text style={styles.title}>RateFlip</Text>
+        <Text style={styles.appSubtitle}>Currency Converter</Text>
+        <Text style={styles.subtitle}>Rates updated: {lastFetched}</Text>
 
-      <View style={styles.slots}>
-        {slots.map((code, i) => (
-          <CurrencySlot
-            key={i}
-            currencyCode={code}
-            value={values[i]}
-            isActive={activeSlot === i}
-            isDuplicate={slots.filter((s) => s === code).length > 1}
-            onFocus={() => setActiveSlot(i)}
-            onChangeText={(text) => handleChangeText(i, text)}
-            onPressCurrency={() => openPicker(i)}
-          />
-        ))}
+        <View style={styles.slots}>
+          {slots.map((code, i) => (
+            <CurrencySlot
+              key={i}
+              currencyCode={code}
+              value={values[i]}
+              isActive={activeSlot === i}
+              isDuplicate={slots.filter((s) => s === code).length > 1}
+              onFocus={() => handleFocus(i)}
+              onPressCurrency={() => openPicker(i)}
+            />
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.refreshBtn} onPress={loadRates}>
+          <Text style={styles.refreshText}>↻ Refresh Rates</Text>
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.refreshBtn} onPress={loadRates}>
-        <Text style={styles.refreshText}>↻ Refresh Rates</Text>
-      </TouchableOpacity>
+      <NumPad
+        onKeyPress={handleNumPadKey}
+        onBackspace={handleBackspace}
+        onClear={handleClear}
+      />
 
       {/* Currency Picker Modal */}
       <Modal visible={pickerVisible} transparent animationType="slide">
@@ -199,8 +267,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#121212',
-    paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
+  },
+  topContent: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   centered: {
     flex: 1,
