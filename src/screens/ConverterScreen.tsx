@@ -66,12 +66,25 @@ export default function ConverterScreen() {
     const newValues = currentSlots.map((code, i) => {
       if (i === sourceIdx) return rawText;
       const result = convert(amount, currentSlots[sourceIdx], code, currentRates);
-      return amount === 0 ? '' : result.toFixed(1);
+      return amount === 0 ? '' : result.toFixed(2);
     });
     setValues(newValues);
   }
 
   function handleChangeText(slotIdx: number, text: string) {
+    // Only allow digits and a single decimal point
+    if (!/^\d*\.?\d*$/.test(text)) {
+      return;
+    }
+
+    // Prevent more than two decimal places
+    if (text.includes('.')) {
+      const [_, decimal] = text.split('.');
+      if (decimal && decimal.length > 2) {
+        return;
+      }
+    }
+    
     setActiveSlot(slotIdx);
     if (rates) recalculate(slotIdx, text, slots, rates);
   }
