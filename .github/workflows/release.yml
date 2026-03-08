@@ -54,7 +54,7 @@ jobs:
 
       # ── 5. Set up Expo / EAS ─────────────────────────────────────────────
       - name: Install EAS CLI
-        run: npm install -g eas-cli
+        run: npm install -g eas-cli@14
 
       - name: Build APK via EAS (Local)
         env:
