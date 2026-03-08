@@ -23,6 +23,8 @@ jobs:
   build-apk:
     name: Build & Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       # ── 1. Checkout the chosen release branch ─────────────────────────────
@@ -59,6 +61,7 @@ jobs:
       - name: Build APK via EAS (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_NO_EXPO_GO_WARNING: true
         run: |
           mkdir -p ./build
           eas build \
