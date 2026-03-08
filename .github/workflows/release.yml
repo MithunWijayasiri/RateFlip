@@ -45,21 +45,30 @@ jobs:
 
 
 
-      # ── 4. Set up Expo / EAS ─────────────────────────────────────────────
+      # ── 4. Set up Java & Android for Local Build ──────────────────────────
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ── 5. Set up Expo / EAS ─────────────────────────────────────────────
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build APK via EAS
+      - name: Build APK via EAS (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          mkdir -p ./build
           eas build \
             --platform android \
             --profile production \
+            --local \
             --non-interactive \
             --output ./build/app-release.apk
 
-      # ── 5. Create GitHub Release and upload APK ───────────────────────────
+      # ── 6. Create GitHub Release and upload APK ───────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
