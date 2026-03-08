@@ -2,7 +2,6 @@ import React from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
@@ -13,7 +12,6 @@ interface Props {
   isActive: boolean;
   isDuplicate: boolean;
   onFocus: () => void;
-  onChangeText: (text: string) => void;
   onPressCurrency: () => void;
 }
 
@@ -23,26 +21,25 @@ export default function CurrencySlot({
   isActive,
   isDuplicate,
   onFocus,
-  onChangeText,
   onPressCurrency,
 }: Props) {
   return (
-    <View style={[styles.row, isDuplicate && styles.duplicateRow, isActive && styles.activeRow]}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onFocus}
+      style={[styles.row, isDuplicate && styles.duplicateRow, isActive && styles.activeRow]}
+    >
       <TouchableOpacity style={styles.badge} onPress={onPressCurrency}>
         <Text style={styles.badgeText}>{currencyCode}</Text>
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onFocus={onFocus}
-        onChangeText={onChangeText}
-        keyboardType="decimal-pad"
-        placeholder="0.00"
-        placeholderTextColor="#555"
-        selectTextOnFocus
-      />
-    </View>
+      <View style={styles.valueContainer}>
+        <Text style={[styles.valueText, !value && styles.placeholderText]}>
+          {value || '0'}
+        </Text>
+        {isActive && <View style={styles.cursor} />}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -85,11 +82,26 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 10,
   },
-  input: {
+  valueContainer: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  valueText: {
     color: '#fff',
     fontSize: 24,
     fontWeight: '300',
     textAlign: 'right',
+  },
+  placeholderText: {
+    color: '#555',
+  },
+  cursor: {
+    width: 2,
+    height: 24,
+    backgroundColor: '#4f8ef7',
+    marginLeft: 2,
+    borderRadius: 1,
   },
 });
