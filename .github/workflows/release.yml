@@ -13,6 +13,11 @@ on:
         required: true
         default: 'master'
         type: string
+      release_notes:
+        description: 'Release notes (e.g. Initial release)'
+        required: false
+        default: 'Automated build'
+        type: string
 
 jobs:
   build-apk:
@@ -62,7 +67,12 @@ jobs:
           name: "Release ${{ github.event.inputs.version }}"
           body: |
             ## RateFlip ${{ github.event.inputs.version }}
-            Built from branch: `${{ github.event.inputs.release_branch }}`
+            
+            ${{ github.event.inputs.release_notes }}
+            
+            ---
+            **Build Details**
+            - Branch: `${{ github.event.inputs.release_branch }}`
           files: ./build/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
