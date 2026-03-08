@@ -27,7 +27,7 @@ export default function CurrencySlot({
   onPressCurrency,
 }: Props) {
   return (
-    <View style={[styles.row, isActive && styles.activeRow, isDuplicate && styles.duplicateRow]}>
+    <View style={[styles.row, isDuplicate && styles.duplicateRow, isActive && styles.activeRow]}>
       <TouchableOpacity style={styles.badge} onPress={onPressCurrency}>
         <Text style={styles.badgeText}>{currencyCode}</Text>
         <Text style={styles.chevron}>▼</Text>
@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
   },
   duplicateRow: {
     borderColor: '#c0392b',
+    backgroundColor: '#3b1c1c',
   },
   badge: {
     flexDirection: 'row',

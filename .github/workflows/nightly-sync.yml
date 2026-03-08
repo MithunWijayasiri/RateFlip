@@ -12,6 +12,9 @@ jobs:
   sync-develop-to-master:
     name: Merge develop into master
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
 
     steps:
       # ── 1. Check out the full history so merges work correctly ────────────
@@ -42,7 +45,20 @@ jobs:
 
           git push origin master
 
-      # ── 4. Summary ────────────────────────────────────────────────────────
+      # ── 4. Fallback on Failure ────────────────────────────────────────────
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "🚨 Nightly Sync Failed: Merge Conflict",
+              body: "The nightly sync from `develop` to `master` failed. Check the [action run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) and resolve the conflict.",
+            })
+
+      # ── 5. Summary ────────────────────────────────────────────────────────
       - name: Print merge summary
         run: |
           echo "✅ develop has been merged into master successfully."
