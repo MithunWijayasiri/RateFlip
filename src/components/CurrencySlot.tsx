@@ -11,6 +11,7 @@ interface Props {
   currencyCode: string;
   value: string;
   isActive: boolean;
+  isDuplicate: boolean;
   onFocus: () => void;
   onChangeText: (text: string) => void;
   onPressCurrency: () => void;
@@ -20,12 +21,13 @@ export default function CurrencySlot({
   currencyCode,
   value,
   isActive,
+  isDuplicate,
   onFocus,
   onChangeText,
   onPressCurrency,
 }: Props) {
   return (
-    <View style={[styles.row, isActive && styles.activeRow]}>
+    <View style={[styles.row, isActive && styles.activeRow, isDuplicate && styles.duplicateRow]}>
       <TouchableOpacity style={styles.badge} onPress={onPressCurrency}>
         <Text style={styles.badgeText}>{currencyCode}</Text>
         <Text style={styles.chevron}>▼</Text>
@@ -58,6 +60,9 @@ const styles = StyleSheet.create({
   },
   activeRow: {
     borderColor: '#4f8ef7',
+  },
+  duplicateRow: {
+    borderColor: '#c0392b',
   },
   badge: {
     flexDirection: 'row',
