@@ -29,7 +29,13 @@ export default function CurrencySlot({
       onPress={onFocus}
       style={[styles.row, isDuplicate && styles.duplicateRow, isActive && styles.activeRow]}
     >
-      <TouchableOpacity style={styles.badge} onPress={onPressCurrency}>
+      <TouchableOpacity 
+        style={styles.badge} 
+        onPress={() => {
+          onFocus();
+          onPressCurrency();
+        }}
+      >
         <Text style={styles.badgeText}>{currencyCode}</Text>
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>

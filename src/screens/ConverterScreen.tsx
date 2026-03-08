@@ -25,6 +25,7 @@ export default function ConverterScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [isNewInput, setIsNewInput] = useState(true);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [lastFetched, setLastFetched] = useState<string>('');
@@ -72,9 +73,24 @@ export default function ConverterScreen() {
     setValues(newValues);
   }
 
+  function handleFocus(slotIdx: number) {
+    setActiveSlot(slotIdx);
+    setIsNewInput(true);
+  }
+
   // Append a key (digit, '.', or '00') to the active slot's value
   function handleNumPadKey(key: string) {
-    const current = values[activeSlot] || '';
+    let current = values[activeSlot] || '';
+
+    // If typing right after focusing, replace the existing value
+    if (isNewInput) {
+      if (key === '.') {
+        current = '0'; // start with '0.'
+      } else {
+        current = '';
+      }
+      setIsNewInput(false);
+    }
 
     // Prevent multiple decimal points
     if (key === '.' && current.includes('.')) return;
@@ -92,6 +108,7 @@ export default function ConverterScreen() {
 
   // Remove the last character from the active slot's value
   function handleBackspace() {
+    setIsNewInput(false);
     const current = values[activeSlot] || '';
     const next = current.slice(0, -1);
     if (rates) recalculate(activeSlot, next, slots, rates);
@@ -99,6 +116,7 @@ export default function ConverterScreen() {
 
   // Clear the active slot's value entirely
   function handleClear() {
+    setIsNewInput(false);
     if (rates) recalculate(activeSlot, '', slots, rates);
   }
 
@@ -159,7 +177,7 @@ export default function ConverterScreen() {
               value={values[i]}
               isActive={activeSlot === i}
               isDuplicate={slots.filter((s) => s === code).length > 1}
-              onFocus={() => setActiveSlot(i)}
+              onFocus={() => handleFocus(i)}
               onPressCurrency={() => openPicker(i)}
             />
           ))}
