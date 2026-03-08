@@ -23,6 +23,8 @@ jobs:
   build-apk:
     name: Build & Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       # ── 1. Checkout the chosen release branch ─────────────────────────────
@@ -43,23 +45,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ── 4. Set up Java & Android for Local Build ──────────────────────────
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-
-      # ── 4. Set up Expo / EAS ─────────────────────────────────────────────
+      # ── 5. Set up Expo / EAS ─────────────────────────────────────────────
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build APK via EAS
+      - name: Build APK via EAS (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_NO_EXPO_GO_WARNING: true
         run: |
+          mkdir -p ./build
           eas build \
             --platform android \
             --profile production \
+            --local \
             --non-interactive \
-            --output ./build/app-release.apk
+            --output ./build/RateFlip-${{ github.event.inputs.version }}.apk
 
-      # ── 5. Create GitHub Release and upload APK ───────────────────────────
+      # ── 6. Create GitHub Release and upload APK ───────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -67,12 +77,12 @@ jobs:
           name: "Release ${{ github.event.inputs.version }}"
           body: |
             ## RateFlip ${{ github.event.inputs.version }}
-            
+
             ${{ github.event.inputs.release_notes }}
-            
+
             ---
             **Build Details**
             - Branch: `${{ github.event.inputs.release_branch }}`
-          files: ./build/app-release.apk
+          files: ./build/RateFlip-${{ github.event.inputs.version }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
