@@ -1,0 +1,50 @@
+name: Nightly Sync — develop → master
+
+on:
+  # Runs every night at midnight UTC
+  schedule:
+    - cron: '0 0 * * *'
+
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  sync-develop-to-master:
+    name: Merge develop into master
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Check out the full history so merges work correctly ────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history required for merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Configure Git identity ─────────────────────────────────────────
+      - name: Configure Git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── 3. Merge develop into master ──────────────────────────────────────
+      - name: Merge develop → master
+        run: |
+          git checkout master
+          git pull origin master
+
+          git checkout develop
+          git pull origin develop
+
+          git checkout master
+          git merge --no-ff develop \
+            -m "chore: nightly sync develop → master [skip ci]"
+
+          git push origin master
+
+      # ── 4. Summary ────────────────────────────────────────────────────────
+      - name: Print merge summary
+        run: |
+          echo "✅ develop has been merged into master successfully."
+          echo "Latest master commit:"
+          git log -1 --oneline master

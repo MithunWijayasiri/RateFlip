@@ -8,6 +8,7 @@ import {
   StatusBar as RNStatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -26,6 +27,7 @@ export default function ConverterScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [lastFetched, setLastFetched] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadRates();
@@ -37,7 +39,14 @@ export default function ConverterScreen() {
       setError(null);
       const r = await getRates();
       setRates(r);
-      setLastFetched(new Date().toLocaleTimeString());
+      setLastFetched(
+        new Date().toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      );
       // Auto-convert with initial value
       recalculate(0, '1', slots, r);
     } catch (e: any) {
@@ -69,6 +78,7 @@ export default function ConverterScreen() {
 
   function openPicker(slotIdx: number) {
     setPickerTarget(slotIdx);
+    setSearchQuery('');
     setPickerVisible(true);
   }
 
@@ -78,8 +88,15 @@ export default function ConverterScreen() {
     newSlots[pickerTarget] = code;
     setSlots(newSlots);
     setPickerVisible(false);
+    setSearchQuery('');
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);
   }
+
+  const filteredCurrencies = POPULAR_CURRENCIES.filter(
+    (c) =>
+      c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -103,7 +120,8 @@ export default function ConverterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Currency Converter</Text>
+      <Text style={styles.title}>RateFlip</Text>
+      <Text style={styles.appSubtitle}>Currency Converter</Text>
       <Text style={styles.subtitle}>Rates updated: {lastFetched}</Text>
 
       <View style={styles.slots}>
@@ -113,6 +131,7 @@ export default function ConverterScreen() {
             currencyCode={code}
             value={values[i]}
             isActive={activeSlot === i}
+            isDuplicate={slots.filter((s) => s === code).length > 1}
             onFocus={() => setActiveSlot(i)}
             onChangeText={(text) => handleChangeText(i, text)}
             onPressCurrency={() => openPicker(i)}
@@ -126,14 +145,24 @@ export default function ConverterScreen() {
 
       {/* Currency Picker Modal */}
       <Modal visible={pickerVisible} transparent animationType="slide">
-        <TouchableWithoutFeedback onPress={() => setPickerVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => { setPickerVisible(false); setSearchQuery(''); }}>
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Select Currency</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search currency..."
+            placeholderTextColor="#555"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
           <FlatList
-            data={POPULAR_CURRENCIES}
+            data={filteredCurrencies}
             keyExtractor={(item) => item.code}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.currencyItem}
@@ -143,6 +172,9 @@ export default function ConverterScreen() {
                 <Text style={styles.currencyName}>{item.name}</Text>
               </TouchableOpacity>
             )}
+            ListEmptyComponent={
+              <Text style={styles.noResults}>No currencies found</Text>
+            }
           />
         </View>
       </Modal>
@@ -165,14 +197,23 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     marginTop: 24,
-    marginBottom: 4,
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  appSubtitle: {
+    color: '#4f8ef7',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   subtitle: {
-    color: '#666',
-    fontSize: 12,
+    color: '#555',
+    fontSize: 11,
     marginBottom: 24,
   },
   slots: {
@@ -231,6 +272,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     textAlign: 'center',
+  },
+  searchInput: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+  },
+  noResults: {
+    color: '#555',
+    textAlign: 'center',
+    marginTop: 24,
+    fontSize: 14,
   },
   currencyItem: {
     flexDirection: 'row',
