@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { formatCurrencyValue } from '../utils/format';
 
 interface Props {
   currencyCode: string;
@@ -23,6 +24,8 @@ export default function CurrencySlot({
   onFocus,
   onPressCurrency,
 }: Props) {
+  const formattedValue = formatCurrencyValue(value);
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -40,8 +43,13 @@ export default function CurrencySlot({
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>
       <View style={styles.valueContainer}>
-        <Text style={[styles.valueText, !value && styles.placeholderText]}>
-          {value || '0'}
+        <Text 
+          style={[styles.valueText, !value && styles.placeholderText]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
+        >
+          {formattedValue || '0'}
         </Text>
         {isActive && <View style={styles.cursor} />}
       </View>

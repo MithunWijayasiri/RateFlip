@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Platform,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -84,12 +86,28 @@ export default function ConverterScreen() {
 
     // If typing right after focusing, replace the existing value
     if (isNewInput) {
+      if (key === '0' || key === '00') return; // Block leading zeros on fresh focus
+      
+      let next = '';
       if (key === '.') {
-        current = '0'; // start with '0.'
+        next = '0.';
       } else {
-        current = '';
+        next = key;
       }
+      
       setIsNewInput(false);
+      if (rates) recalculate(activeSlot, next, slots, rates);
+      return;
+    }
+
+    // If field is empty or just '0', handle leading characters carefully
+    if (current === '' || current === '0') {
+      if (key === '0' || key === '00') return; // Block redundant zeros
+      if (key === '.') {
+        current = '0'; // will become '0.'
+      } else {
+        current = ''; // replace '0' with the new digit
+      }
     }
 
     // Prevent multiple decimal points
@@ -103,6 +121,18 @@ export default function ConverterScreen() {
     }
 
     const next = current + key;
+
+    // Limit to 15 characters
+    if (next.length > 15) {
+      const msg = 'Maximum limit reached (15 digits)';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(msg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Limit Reached', msg);
+      }
+      return;
+    }
+
     if (rates) recalculate(activeSlot, next, slots, rates);
   }
 
