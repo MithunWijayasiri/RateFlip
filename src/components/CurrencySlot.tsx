@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { formatCurrencyValue } from '../utils/format';
 
@@ -27,13 +28,19 @@ export default function CurrencySlot({
   const formattedValue = formatCurrencyValue(value);
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    // Outer Pressable covers the value area; badge has its own separate Pressable
+    <Pressable
       onPress={onFocus}
-      style={[styles.row, isDuplicate && styles.duplicateRow, isActive && styles.activeRow]}
+      style={({ pressed }) => [
+        styles.row,
+        isDuplicate && styles.duplicateRow,
+        isActive && styles.activeRow,
+        pressed && styles.rowPressed,
+      ]}
     >
-      <TouchableOpacity 
-        style={styles.badge} 
+      <TouchableOpacity
+        style={styles.badge}
+        activeOpacity={0.7}
         onPress={() => {
           onFocus();
           onPressCurrency();
@@ -43,7 +50,7 @@ export default function CurrencySlot({
         <Text style={styles.chevron}>▼</Text>
       </TouchableOpacity>
       <View style={styles.valueContainer}>
-        <Text 
+        <Text
           style={[styles.valueText, !value && styles.placeholderText]}
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -53,7 +60,7 @@ export default function CurrencySlot({
         </Text>
         {isActive && <View style={styles.cursor} />}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -68,6 +75,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#2e2e2e',
+  },
+  rowPressed: {
+    opacity: 0.75,
   },
   activeRow: {
     borderColor: '#4f8ef7',

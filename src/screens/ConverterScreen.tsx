@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { getRates, convert, Rates } from '../api/exchangeApi';
+import { getRates, forceRefreshRates, convert, Rates } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
 import NumPad from '../components/NumPad';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
@@ -31,6 +31,7 @@ export default function ConverterScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [lastFetched, setLastFetched] = useState<string>('');
+  const [isCached, setIsCached] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -41,8 +42,9 @@ export default function ConverterScreen() {
     try {
       setLoading(true);
       setError(null);
-      const r = await getRates();
+      const { rates: r, fromCache } = await getRates();
       setRates(r);
+      setIsCached(fromCache);
       setLastFetched(
         new Date().toLocaleString([], {
           month: 'short',
@@ -55,6 +57,29 @@ export default function ConverterScreen() {
       recalculate(0, '1', slots, r);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load rates');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleManualRefresh() {
+    try {
+      setLoading(true);
+      setError(null);
+      const r = await forceRefreshRates();
+      setRates(r);
+      setIsCached(false);
+      setLastFetched(
+        new Date().toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      );
+      recalculate(activeSlot, values[activeSlot] || '1', slots, r);
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to refresh rates');
     } finally {
       setLoading(false);
     }
@@ -166,10 +191,36 @@ export default function ConverterScreen() {
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);
   }
 
-  const filteredCurrencies = POPULAR_CURRENCIES.filter(
-    (c) =>
-      c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Pre-compute which currency codes appear more than once so the filter
+  // doesn't run inside the render of every slot on every state change
+  const duplicateCodes = useMemo(() => {
+    const count: Record<string, number> = {};
+    slots.forEach((s) => { count[s] = (count[s] ?? 0) + 1; });
+    return new Set(Object.keys(count).filter((k) => count[k] > 1));
+  }, [slots]);
+
+  const renderCurrencyItem = useCallback(
+    ({ item }: { item: { code: string; name: string } }) => (
+      <TouchableOpacity
+        style={styles.currencyItem}
+        onPress={() => selectCurrency(item.code)}
+      >
+        <Text style={styles.currencyCode}>{item.code}</Text>
+        <Text style={styles.currencyName}>{item.name}</Text>
+      </TouchableOpacity>
+    ),
+    // selectCurrency is stable (no deps that change frequently)
+    [selectCurrency]
+  );
+
+  const filteredCurrencies = useMemo(
+    () =>
+      POPULAR_CURRENCIES.filter(
+        (c) =>
+          c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [searchQuery]
   );
 
   if (loading) {
@@ -197,7 +248,9 @@ export default function ConverterScreen() {
       <View style={styles.topContent}>
         <Text style={styles.title}>RateFlip</Text>
         <Text style={styles.appSubtitle}>Currency Converter</Text>
-        <Text style={styles.subtitle}>Rates updated: {lastFetched}</Text>
+        <Text style={styles.subtitle}>
+          Rates updated: {lastFetched}{isCached ? '  (cached)' : ''}
+        </Text>
 
         <View style={styles.slots}>
           {slots.map((code, i) => (
@@ -206,14 +259,14 @@ export default function ConverterScreen() {
               currencyCode={code}
               value={values[i]}
               isActive={activeSlot === i}
-              isDuplicate={slots.filter((s) => s === code).length > 1}
+              isDuplicate={duplicateCodes.has(code)}
               onFocus={() => handleFocus(i)}
               onPressCurrency={() => openPicker(i)}
             />
           ))}
         </View>
 
-        <TouchableOpacity style={styles.refreshBtn} onPress={loadRates}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={handleManualRefresh}>
           <Text style={styles.refreshText}>↻ Refresh Rates</Text>
         </TouchableOpacity>
       </View>
@@ -244,15 +297,7 @@ export default function ConverterScreen() {
             data={filteredCurrencies}
             keyExtractor={(item) => item.code}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.currencyItem}
-                onPress={() => selectCurrency(item.code)}
-              >
-                <Text style={styles.currencyCode}>{item.code}</Text>
-                <Text style={styles.currencyName}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
+            renderItem={renderCurrencyItem}
             ListEmptyComponent={
               <Text style={styles.noResults}>No currencies found</Text>
             }

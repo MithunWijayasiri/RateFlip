@@ -1,17 +1,17 @@
 name: Release — Build & Publish APK
 
 on:
-  # ✋ Manual trigger ONLY — never runs automatically
+  # Manual trigger — never runs automatically
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.0)'
+        description: "Release version tag (e.g. v1.0.0)"
         required: true
         type: string
       release_branch:
-        description: 'Branch to build from (e.g. release/v1.0.0 or master)'
+        description: "Branch to build from (e.g. release/v1.0.0 or master)"
         required: true
-        default: 'master'
+        default: "master"
         type: string
 
 jobs:
@@ -33,8 +33,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       # ── 3. Install dependencies ───────────────────────────────────────────
       - name: Install dependencies
