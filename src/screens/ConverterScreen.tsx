@@ -181,7 +181,7 @@ export default function ConverterScreen() {
     setPickerVisible(true);
   }
 
-  function selectCurrency(code: string) {
+  const selectCurrency = useCallback((code: string) => {
     if (pickerTarget === null) return;
     const newSlots = [...slots];
     newSlots[pickerTarget] = code;
@@ -189,7 +189,7 @@ export default function ConverterScreen() {
     setPickerVisible(false);
     setSearchQuery('');
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);
-  }
+  }, [pickerTarget, slots, rates, activeSlot, values]);
 
   // Pre-compute which currency codes appear more than once so the filter
   // doesn't run inside the render of every slot on every state change
@@ -209,7 +209,6 @@ export default function ConverterScreen() {
         <Text style={styles.currencyName}>{item.name}</Text>
       </TouchableOpacity>
     ),
-    // selectCurrency is stable (no deps that change frequently)
     [selectCurrency]
   );
 

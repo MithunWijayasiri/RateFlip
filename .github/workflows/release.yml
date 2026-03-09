@@ -65,7 +65,11 @@ jobs:
         run: |
           TARGET="./build/RateFlip-${{ github.event.inputs.version }}.apk"
           if [ ! -f "$TARGET" ]; then
-            FOUND=$(find . -name "*.apk" | head -n 1)
+            FOUND=$(find . -maxdepth 2 -type f -name "*.apk" -print -quit)
+            if [ -z "$FOUND" ]; then
+              echo "Error: Expected an APK from EAS, but none was found." >&2
+              exit 1
+            fi
             echo "EAS ignored --output. Found APK at: $FOUND"
             mv "$FOUND" "$TARGET"
           fi
