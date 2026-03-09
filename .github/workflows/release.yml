@@ -13,15 +13,10 @@ on:
         required: true
         default: 'master'
         type: string
-      release_notes:
-        description: 'Release notes (use \n or | for new lines)'
-        required: false
-        default: 'Automated build'
-        type: string
 
 jobs:
   build:
-    name: Build & Release APK (arm64-v8a)
+    name: Build & Release APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -56,7 +51,7 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli@14
 
-      # ── 6. Build arm64-v8a APK ────────────────────────────────────────────
+      # ── 6. Build APK ──────────────────────────────────────────────────────
       - name: Build APK via EAS (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -68,20 +63,19 @@ jobs:
             --profile production \
             --local \
             --non-interactive \
-            --output ./build/RateFlip-${{ github.event.inputs.version }}-arm64-v8a.apk
+            --output ./build/RateFlip-${{ github.event.inputs.version }}.apk
 
-      # ── 7. Process Release Notes (Support Multi-line) ─────────────────────
-      - name: Format Release Notes
-        id: format_notes
-        env:
-          RAW_NOTES: ${{ github.event.inputs.release_notes }}
+      # ── 7. Rename APK if EAS ignored --output ─────────────────────────────
+      # EAS sometimes ignores --output and drops app-release.apk in the root.
+      # This step finds it wherever it landed and moves it to the expected path.
+      - name: Ensure APK is correctly named
         run: |
-          # Replace literal '\n' or '|' with actual newlines
-          # We use a heredoc to safely pass multi-line strings to GITHUB_OUTPUT
-          CLEAN_NOTES=$(echo "$RAW_NOTES" | sed -e 's/\\n/\n/g' -e 's/|/\n/g')
-          echo "formatted_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CLEAN_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          TARGET="./build/RateFlip-${{ github.event.inputs.version }}.apk"
+          if [ ! -f "$TARGET" ]; then
+            FOUND=$(find . -name "*.apk" | head -n 1)
+            echo "EAS ignored --output. Found APK at: $FOUND"
+            mv "$FOUND" "$TARGET"
+          fi
 
       # ── 8. Create GitHub Release and upload APK ───────────────────────────
       - name: Create GitHub Release
@@ -90,13 +84,6 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: ${{ github.event.inputs.version }}
           generate_release_notes: true
-          body: |
-            ${{ steps.format_notes.outputs.formatted_notes }}
-
-            ---
-            **Build Details**
-            - Branch: `${{ github.event.inputs.release_branch }}`
-            - Architecture: `arm64-v8a` (all modern Android phones)
-          files: ./build/RateFlip-${{ github.event.inputs.version }}-arm64-v8a.apk
+          files: ./build/RateFlip-${{ github.event.inputs.version }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
