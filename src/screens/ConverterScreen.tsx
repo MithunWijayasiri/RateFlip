@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Platform,
@@ -35,6 +37,25 @@ export default function ConverterScreen() {
   const [isCached, setIsCached] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const spinAnim = React.useRef(new Animated.Value(0)).current;
+
+  const startSpin = useCallback(() => {
+    spinAnim.setValue(0);
+    Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [spinAnim]);
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   useEffect(() => {
     loadRates();
@@ -66,7 +87,8 @@ export default function ConverterScreen() {
 
   async function handleManualRefresh() {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
+      startSpin();
       setError(null);
       const r = await forceRefreshRates();
       setRates(r);
@@ -83,7 +105,8 @@ export default function ConverterScreen() {
     } catch (e: any) {
       setError(e.message ?? 'Failed to refresh rates');
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
+      spinAnim.stopAnimation();
     }
   }
 
@@ -284,8 +307,17 @@ export default function ConverterScreen() {
           Rates updated: {lastFetched}{isCached ? '  (cached)' : ''}
         </Text>
 
-        <TouchableOpacity style={styles.refreshBtn} onPress={handleManualRefresh}>
-          <Text style={styles.refreshText}>↻ Refresh Rates</Text>
+        <TouchableOpacity 
+          style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]} 
+          onPress={handleManualRefresh}
+          disabled={isRefreshing}
+        >
+          <Animated.View style={{ transform: [{ rotate: spin }] }}>
+            <Text style={[styles.refreshText, { marginRight: 6 }]}>↻</Text>
+          </Animated.View>
+          <Text style={styles.refreshText}>
+            {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -296,7 +328,12 @@ export default function ConverterScreen() {
       />
 
       {/* Currency Picker Modal */}
-      <Modal visible={pickerVisible} transparent animationType="slide">
+      <Modal 
+        visible={pickerVisible} 
+        transparent 
+        animationType="slide"
+        onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
+      >
         <TouchableWithoutFeedback onPress={() => { setPickerVisible(false); setSearchQuery(''); }}>
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>

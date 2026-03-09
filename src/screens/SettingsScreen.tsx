@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
+  BackHandler,
   Platform,
   SafeAreaView,
   StatusBar as RNStatusBar,
@@ -14,6 +15,16 @@ interface Props {
 }
 
 export default function SettingsScreen({ onClose }: Props) {
+  useEffect(() => {
+    const handleBackPress = () => {
+      onClose();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => subscription.remove();
+  }, [onClose]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
