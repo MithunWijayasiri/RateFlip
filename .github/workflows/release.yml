@@ -14,7 +14,7 @@ on:
         default: 'master'
         type: string
       release_notes:
-        description: 'Release notes (e.g. Initial release)'
+        description: 'Release notes (use \n or | for new lines)'
         required: false
         default: 'Automated build'
         type: string
@@ -64,16 +64,28 @@ jobs:
             --non-interactive \
             --output ./build/app-release.apk
 
-      # ── 5. Create GitHub Release and upload APK ───────────────────────────
+      # ── 7. Process Release Notes (Support Multi-line) ─────────────────────
+      - name: Format Release Notes
+        id: format_notes
+        env:
+          RAW_NOTES: ${{ github.event.inputs.release_notes }}
+        run: |
+          # Replace literal '\n' or '|' with actual newlines
+          # We use a heredoc to safely pass multi-line strings to GITHUB_OUTPUT
+          CLEAN_NOTES=$(echo "$RAW_NOTES" | sed -e 's/\\n/\n/g' -e 's/|/\n/g')
+          echo "formatted_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$CLEAN_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ── 8. Create GitHub Release and upload APK ───────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
-          name: "RateFlip ${{ github.event.inputs.version }}"
+          name: ${{ github.event.inputs.version }}
+          generate_release_notes: true
           body: |
-            ## RateFlip ${{ github.event.inputs.version }}
-
-            ${{ github.event.inputs.release_notes }}
+            ${{ steps.format_notes.outputs.formatted_notes }}
 
             ---
             **Build Details**
