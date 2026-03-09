@@ -1,27 +1,22 @@
 name: Release — Build & Publish APK
 
 on:
-  # ✋ Manual trigger ONLY — never runs automatically
+  # Manual trigger — never runs automatically
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.0)'
+        description: "Release version tag (e.g. v1.0.0)"
         required: true
         type: string
       release_branch:
-        description: 'Branch to build from (e.g. release/v1.0.0 or master)'
+        description: "Branch to build from (e.g. release/v1.0.0 or master)"
         required: true
-        default: 'master'
-        type: string
-      release_notes:
-        description: 'Release notes (use \n or | for new lines)'
-        required: false
-        default: 'Automated build'
+        default: "master"
         type: string
 
 jobs:
   build:
-    name: Build & Release APK (arm64-v8a)
+    name: Build & Release APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,20 +33,19 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       # ── 3. Install dependencies ───────────────────────────────────────────
       - name: Install dependencies
         run: npm ci
 
-
-
       # ── 4. Set up Expo / EAS ─────────────────────────────────────────────
       - name: Install EAS CLI
         run: npm install -g eas-cli@14
 
-      - name: Build APK via EAS
+      # ── 6. Build APK ──────────────────────────────────────────────────────
+      - name: Build APK via EAS (Local)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_BUILD_NO_EXPO_GO_WARNING: true
@@ -62,20 +56,23 @@ jobs:
             --profile production \
             --local \
             --non-interactive \
-            --output ./build/app-release.apk
+            --output ./build/RateFlip-${{ github.event.inputs.version }}.apk
 
-      # ── 7. Process Release Notes (Support Multi-line) ─────────────────────
-      - name: Format Release Notes
-        id: format_notes
-        env:
-          RAW_NOTES: ${{ github.event.inputs.release_notes }}
+      # ── 7. Rename APK if EAS ignored --output ─────────────────────────────
+      # EAS sometimes ignores --output and drops app-release.apk in the root.
+      # This step finds it wherever it landed and moves it to the expected path.
+      - name: Ensure APK is correctly named
         run: |
-          # Replace literal '\n' or '|' with actual newlines
-          # We use a heredoc to safely pass multi-line strings to GITHUB_OUTPUT
-          CLEAN_NOTES=$(echo "$RAW_NOTES" | sed -e 's/\\n/\n/g' -e 's/|/\n/g')
-          echo "formatted_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$CLEAN_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          TARGET="./build/RateFlip-${{ github.event.inputs.version }}.apk"
+          if [ ! -f "$TARGET" ]; then
+            FOUND=$(find . -maxdepth 2 -type f -name "*.apk" -print -quit)
+            if [ -z "$FOUND" ]; then
+              echo "Error: Expected an APK from EAS, but none was found." >&2
+              exit 1
+            fi
+            echo "EAS ignored --output. Found APK at: $FOUND"
+            mv "$FOUND" "$TARGET"
+          fi
 
       # ── 8. Create GitHub Release and upload APK ───────────────────────────
       - name: Create GitHub Release
@@ -84,12 +81,6 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: ${{ github.event.inputs.version }}
           generate_release_notes: true
-          body: |
-            ${{ steps.format_notes.outputs.formatted_notes }}
-
-            ---
-            **Build Details**
-            - Branch: `${{ github.event.inputs.release_branch }}`
-          files: ./build/app-release.apk
+          files: ./build/RateFlip-${{ github.event.inputs.version }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
