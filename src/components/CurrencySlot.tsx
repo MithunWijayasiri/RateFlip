@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginVertical: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 13,
     borderWidth: 1,
     borderColor: '#2e2e2e',
   },
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   },
   valueText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 27,
     fontWeight: '300',
     textAlign: 'right',
   },
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   cursor: {
     width: 2,
-    height: 24,
+    height: 28,
     backgroundColor: '#4f8ef7',
     marginLeft: 2,
     borderRadius: 1,

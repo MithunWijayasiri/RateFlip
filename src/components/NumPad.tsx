@@ -58,7 +58,7 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
   );
 }
 
-const BUTTON_SIZE = 64;
+const BUTTON_SIZE = 72;
 const BUTTON_GAP = 12;
 
 const styles = StyleSheet.create({

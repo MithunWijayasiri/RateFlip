@@ -18,6 +18,7 @@ import {
 import { getRates, forceRefreshRates, convert, Rates } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
 import NumPad from '../components/NumPad';
+import SettingsScreen from './SettingsScreen';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
 
 export default function ConverterScreen() {
@@ -33,6 +34,7 @@ export default function ConverterScreen() {
   const [lastFetched, setLastFetched] = useState<string>('');
   const [isCached, setIsCached] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     loadRates();
@@ -222,6 +224,10 @@ export default function ConverterScreen() {
     [searchQuery]
   );
 
+  if (showSettings) {
+    return <SettingsScreen onClose={() => setShowSettings(false)} />;
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -245,11 +251,20 @@ export default function ConverterScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topContent}>
-        <Text style={styles.title}>RateFlip</Text>
-        <Text style={styles.appSubtitle}>Currency Converter</Text>
-        <Text style={styles.subtitle}>
-          Rates updated: {lastFetched}{isCached ? '  (cached)' : ''}
-        </Text>
+        {/* Header row: title block left, settings button right */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>RateFlip</Text>
+            <Text style={styles.appSubtitle}>Currency Converter</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            activeOpacity={0.7}
+            onPress={() => setShowSettings(true)}
+          >
+            <Text style={styles.settingsIcon}>⚙</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.slots}>
           {slots.map((code, i) => (
@@ -264,6 +279,10 @@ export default function ConverterScreen() {
             />
           ))}
         </View>
+
+        <Text style={styles.subtitle}>
+          Rates updated: {lastFetched}{isCached ? '  (cached)' : ''}
+        </Text>
 
         <TouchableOpacity style={styles.refreshBtn} onPress={handleManualRefresh}>
           <Text style={styles.refreshText}>↻ Refresh Rates</Text>
@@ -317,6 +336,27 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  settingsBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#2e2e2e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsIcon: {
+    color: '#888',
+    fontSize: 20,
+  },
   centered: {
     flex: 1,
     backgroundColor: '#121212',
@@ -327,7 +367,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 32,
     fontWeight: '800',
-    marginTop: 24,
     marginBottom: 2,
     letterSpacing: 0.5,
   },
@@ -342,7 +381,9 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#555',
     fontSize: 11,
-    marginBottom: 24,
+    marginTop: 10,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   slots: {
     gap: 4,
@@ -370,7 +411,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   refreshBtn: {
-    marginTop: 24,
+    marginTop: 8,
     alignSelf: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
