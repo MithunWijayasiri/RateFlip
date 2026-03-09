@@ -1,10 +1,6 @@
-name: Nightly Sync — develop → master
+name: Manual Sync — develop → master
 
 on:
-  # Runs every night at midnight UTC
-  schedule:
-    - cron: '0 0 * * *'
-
   # Allow manual trigger from the Actions tab
   workflow_dispatch:
 
