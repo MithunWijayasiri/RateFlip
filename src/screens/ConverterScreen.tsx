@@ -22,8 +22,13 @@ import CurrencySlot from '../components/CurrencySlot';
 import NumPad from '../components/NumPad';
 import SettingsScreen from './SettingsScreen';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
+import { useTheme } from '../context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ConverterScreen() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
+
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [values, setValues] = useState<string[]>(['1', '', '']);
   const [rates, setRates] = useState<Rates | null>(null);
@@ -58,10 +63,29 @@ export default function ConverterScreen() {
   });
 
   useEffect(() => {
-    loadRates();
+    init();
   }, []);
 
-  async function loadRates() {
+  async function fetchSettings() {
+    try {
+      const savedSlots = await AsyncStorage.getItem('@setting_default_slots');
+      if (savedSlots) {
+        const parsed = JSON.parse(savedSlots);
+        setSlots(parsed);
+        // If rates exist, recalculate to reflect new slots
+        if (rates) recalculate(activeSlot, values[activeSlot], parsed, rates);
+        return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_SLOTS;
+  }
+
+  async function init() {
+    const currentSlots = await fetchSettings();
+    loadRates(currentSlots);
+  }
+
+  async function loadRates(currentSlots: string[] = slots) {
     try {
       setLoading(true);
       setError(null);
@@ -77,7 +101,7 @@ export default function ConverterScreen() {
         })
       );
       // Auto-convert with initial value
-      recalculate(0, '1', slots, r);
+      recalculate(0, '1', currentSlots, r);
     } catch (e: any) {
       setError(e.message ?? 'Failed to load rates');
     } finally {
@@ -137,14 +161,14 @@ export default function ConverterScreen() {
     // If typing right after focusing, replace the existing value
     if (isNewInput) {
       if (key === '0' || key === '00') return; // Block leading zeros on fresh focus
-      
+
       let next = '';
       if (key === '.') {
         next = '0.';
       } else {
         next = key;
       }
-      
+
       setIsNewInput(false);
       if (rates) recalculate(activeSlot, next, slots, rates);
       return;
@@ -211,6 +235,7 @@ export default function ConverterScreen() {
     const newSlots = [...slots];
     newSlots[pickerTarget] = code;
     setSlots(newSlots);
+    AsyncStorage.setItem('@setting_default_slots', JSON.stringify(newSlots)).catch(() => {});
     setPickerVisible(false);
     setSearchQuery('');
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);
@@ -234,7 +259,7 @@ export default function ConverterScreen() {
         <Text style={styles.currencyName}>{item.name}</Text>
       </TouchableOpacity>
     ),
-    [selectCurrency]
+    [selectCurrency, styles]
   );
 
   const filteredCurrencies = useMemo(
@@ -248,13 +273,20 @@ export default function ConverterScreen() {
   );
 
   if (showSettings) {
-    return <SettingsScreen onClose={() => setShowSettings(false)} />;
+    return (
+      <SettingsScreen
+        onClose={() => {
+          setShowSettings(false);
+          fetchSettings();
+        }}
+      />
+    );
   }
 
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color="#4f8ef7" />
+        <ActivityIndicator size="large" color={colors.accent} />
         <Text style={styles.loadingText}>Fetching live rates...</Text>
       </SafeAreaView>
     );
@@ -264,7 +296,7 @@ export default function ConverterScreen() {
     return (
       <SafeAreaView style={styles.centered}>
         <Text style={styles.errorText}>⚠️ {error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={loadRates}>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => loadRates()}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -307,8 +339,8 @@ export default function ConverterScreen() {
           Rates updated: {lastFetched}{isCached ? '  (cached)' : ''}
         </Text>
 
-        <TouchableOpacity 
-          style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]} 
+        <TouchableOpacity
+          style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]}
           onPress={handleManualRefresh}
           disabled={isRefreshing}
         >
@@ -328,9 +360,9 @@ export default function ConverterScreen() {
       />
 
       {/* Currency Picker Modal */}
-      <Modal 
-        visible={pickerVisible} 
-        transparent 
+      <Modal
+        visible={pickerVisible}
+        transparent
         animationType="slide"
         onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
       >
@@ -342,7 +374,7 @@ export default function ConverterScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search currency..."
-            placeholderTextColor="#555"
+            placeholderTextColor={colors.textPlaceholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCorrect={false}
@@ -363,154 +395,156 @@ export default function ConverterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
-  },
-  topContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  settingsBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#2e2e2e',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settingsIcon: {
-    color: '#888',
-    fontSize: 20,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: '#121212',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 2,
-    letterSpacing: 0.5,
-  },
-  appSubtitle: {
-    color: '#4f8ef7',
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  subtitle: {
-    color: '#555',
-    fontSize: 11,
-    marginTop: 10,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  slots: {
-    gap: 4,
-  },
-  loadingText: {
-    color: '#888',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 15,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  retryBtn: {
-    marginTop: 16,
-    backgroundColor: '#4f8ef7',
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  refreshBtn: {
-    marginTop: 8,
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  refreshText: {
-    color: '#888',
-    fontSize: 13,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  modalSheet: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    maxHeight: '60%',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  searchInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#3a3a3a',
-  },
-  noResults: {
-    color: '#555',
-    textAlign: 'center',
-    marginTop: 24,
-    fontSize: 14,
-  },
-  currencyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
-  },
-  currencyCode: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    width: 56,
-  },
-  currencyName: {
-    color: '#aaa',
-    fontSize: 14,
-  },
-});
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
+    },
+    topContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 24,
+      marginBottom: 8,
+    },
+    settingsBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    settingsIcon: {
+      color: colors.textMuted,
+      fontSize: 20,
+    },
+    centered: {
+      flex: 1,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: {
+      color: colors.textPrimary,
+      fontSize: 32,
+      fontWeight: '800',
+      marginBottom: 2,
+      letterSpacing: 0.5,
+    },
+    appSubtitle: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: '500',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    },
+    subtitle: {
+      color: colors.textMuted,
+      fontSize: 11,
+      marginTop: 10,
+      marginBottom: 4,
+      textAlign: 'center',
+    },
+    slots: {
+      gap: 4,
+    },
+    loadingText: {
+      color: colors.textSecondary,
+      marginTop: 12,
+      fontSize: 14,
+    },
+    errorText: {
+      color: '#ff6b6b',
+      fontSize: 15,
+      textAlign: 'center',
+      paddingHorizontal: 24,
+    },
+    retryBtn: {
+      marginTop: 16,
+      backgroundColor: colors.accent,
+      paddingHorizontal: 28,
+      paddingVertical: 10,
+      borderRadius: 8,
+    },
+    retryText: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    refreshBtn: {
+      marginTop: 8,
+      alignSelf: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    refreshText: {
+      color: colors.textMuted,
+      fontSize: 13,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+    },
+    modalSheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 16,
+      paddingHorizontal: 16,
+      maxHeight: '60%',
+    },
+    modalTitle: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    searchInput: {
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      color: colors.textPrimary,
+      fontSize: 14,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.borderSubtle,
+    },
+    noResults: {
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: 24,
+      fontSize: 14,
+    },
+    currencyItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceRaised,
+    },
+    currencyCode: {
+      color: colors.textPrimary,
+      fontWeight: '700',
+      fontSize: 16,
+      width: 56,
+    },
+    currencyName: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+  });
+}
