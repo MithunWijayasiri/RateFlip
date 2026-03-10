@@ -14,7 +14,7 @@ import {
   FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme, ThemePreference } from '../context/ThemeContext';
+import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
 
 interface Props {
@@ -28,8 +28,15 @@ const THEME_OPTIONS: { label: string; value: ThemePreference }[] = [
   { label: 'Dark', value: 'dark' },
 ];
 
+const DECIMALS_OPTIONS: { label: string; value: DecimalsPreference }[] = [
+  { label: 'Hide', value: 'hide' },
+  { label: '1', value: '1' },
+  { label: '2', value: '2' },
+  { label: '4', value: '4' },
+];
+
 export default function SettingsScreen({ onClose }: Props) {
-  const { colors, preference, setPreference } = useTheme();
+  const { colors, preference, setPreference, decimals, setDecimals } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
@@ -119,6 +126,32 @@ export default function SettingsScreen({ onClose }: Props) {
                     style={[styles.segment, isSelected && styles.segmentActive]}
                     activeOpacity={0.7}
                     onPress={() => setPreference(opt.value)}
+                  >
+                    <Text style={[styles.segmentText, isSelected && styles.segmentTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={[styles.divider, { marginVertical: 16 }]} />
+
+            <View style={styles.settingRow}>
+              <View>
+                <Text style={styles.settingTitle}>Decimal Places</Text>
+                <Text style={styles.settingSubtitle}>For converted currencies</Text>
+              </View>
+            </View>
+            <View style={styles.segmentControl}>
+              {DECIMALS_OPTIONS.map((opt) => {
+                const isSelected = decimals === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.segment, isSelected && styles.segmentActive]}
+                    activeOpacity={0.7}
+                    onPress={() => setDecimals(opt.value)}
                   >
                     <Text style={[styles.segmentText, isSelected && styles.segmentTextActive]}>
                       {opt.label}
