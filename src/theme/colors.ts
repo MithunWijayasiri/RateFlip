@@ -27,6 +27,8 @@ export type ColorPalette = {
   // Status / semantic
   duplicate: string;
   duplicateBackground: string;
+  error: string;
+  onPrimary: string;
 
   // Settings segmented control
   segmentBackground: string;
@@ -56,6 +58,8 @@ export const darkColors: ColorPalette = {
 
   duplicate: '#c0392b',
   duplicateBackground: '#3b1c1c',
+  error: '#ff6b6b',
+  onPrimary: '#ffffff',
 
   segmentBackground: '#1e1e1e',
   segmentSelected: '#2a2a2a',
@@ -84,6 +88,8 @@ export const lightColors: ColorPalette = {
 
   duplicate: '#c0392b',
   duplicateBackground: '#ffe5e5',
+  error: '#ff3b30',
+  onPrimary: '#ffffff',
 
   segmentBackground: '#e8e8ed',
   segmentSelected: '#ffffff',

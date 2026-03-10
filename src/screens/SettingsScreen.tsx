@@ -30,7 +30,7 @@ const THEME_OPTIONS: { label: string; value: ThemePreference }[] = [
 
 export default function SettingsScreen({ onClose }: Props) {
   const { colors, preference, setPreference } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -39,8 +39,17 @@ export default function SettingsScreen({ onClose }: Props) {
 
   useEffect(() => {
     AsyncStorage.getItem('@setting_default_slots').then((saved) => {
-      if (saved) setSlots(JSON.parse(saved));
-    });
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setSlots(parsed);
+          }
+        } catch (e) {
+          // Ignore invalid or corrupted JSON
+        }
+      }
+    }).catch(() => {});
   }, []);
 
   const openPicker = (index: number) => {

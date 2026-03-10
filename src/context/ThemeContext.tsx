@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setPreference = useCallback((pref: ThemePreference) => {
     setPreferenceState(pref);
-    AsyncStorage.setItem(STORAGE_KEY, pref);
+    AsyncStorage.setItem(STORAGE_KEY, pref).catch(() => {});
   }, []);
 
   // Resolve actual light/dark from preference + device scheme

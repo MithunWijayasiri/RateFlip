@@ -27,7 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ConverterScreen() {
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [values, setValues] = useState<string[]>(['1', '', '']);
@@ -44,18 +44,27 @@ export default function ConverterScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const spinAnim = React.useRef(new Animated.Value(0)).current;
+  const loopAnim = React.useRef<Animated.CompositeAnimation | null>(null);
 
   const startSpin = useCallback(() => {
     spinAnim.setValue(0);
-    Animated.loop(
+    loopAnim.current = Animated.loop(
       Animated.timing(spinAnim, {
         toValue: 1,
         duration: 800,
         easing: Easing.linear,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    loopAnim.current.start();
   }, [spinAnim]);
+
+  useEffect(() => {
+    return () => {
+      // Clean up the animation safely on unmount
+      loopAnim.current?.stop();
+    };
+  }, []);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -130,7 +139,7 @@ export default function ConverterScreen() {
       setError(e.message ?? 'Failed to refresh rates');
     } finally {
       setIsRefreshing(false);
-      spinAnim.stopAnimation();
+      loopAnim.current?.stop();
     }
   }
 
@@ -464,7 +473,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       fontSize: 14,
     },
     errorText: {
-      color: '#ff6b6b',
+      color: colors.error,
       fontSize: 15,
       textAlign: 'center',
       paddingHorizontal: 24,
@@ -477,7 +486,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       borderRadius: 8,
     },
     retryText: {
-      color: '#fff',
+      color: colors.onPrimary,
       fontWeight: '600',
     },
     refreshBtn: {
