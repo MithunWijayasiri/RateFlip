@@ -12,10 +12,14 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   FlatList,
+  ScrollView,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
+
+const packageJson = require('../../package.json');
 
 interface Props {
   onClose: () => void;
@@ -105,7 +109,7 @@ export default function SettingsScreen({ onClose }: Props) {
         <View style={styles.backBtn} />
       </View>
 
-      <View style={styles.body}>
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
         {/* ── Theme Section ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>APPEARANCE</Text>
@@ -188,7 +192,27 @@ export default function SettingsScreen({ onClose }: Props) {
             })}
           </View>
         </View>
-      </View>
+
+        {/* ── About Section ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>ABOUT</Text>
+          <View style={styles.card}>
+            <View style={[styles.settingRow, { marginBottom: 16 }]}>
+              <View>
+                <Text style={styles.settingTitle}>RateFlip App</Text>
+                <Text style={styles.settingSubtitle}>Version {packageJson.version}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.githubBtn}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://github.com/MithunWijayasiri/RateFlip')}
+            >
+              <Text style={styles.githubBtnText}>View Source on GitHub</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
 
       {/* Currency Picker Modal */}
       <Modal
@@ -422,6 +446,18 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     currencyName: {
       color: colors.textSecondary,
+      fontSize: 14,
+    },
+    // About Section added
+    githubBtn: {
+      backgroundColor: colors.surfaceRaised,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    githubBtnText: {
+      color: colors.textPrimary,
+      fontWeight: '600',
       fontSize: 14,
     },
   });
