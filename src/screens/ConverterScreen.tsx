@@ -26,7 +26,7 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ConverterScreen() {
-  const { colors } = useTheme();
+  const { colors, decimals } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
@@ -65,6 +65,12 @@ export default function ConverterScreen() {
       loopAnim.current?.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (rates) {
+      recalculate(activeSlot, values[activeSlot] || '', slots, rates);
+    }
+  }, [decimals]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -152,8 +158,19 @@ export default function ConverterScreen() {
     const amount = parseFloat(rawText) || 0;
     const newValues = currentSlots.map((code, i) => {
       if (i === sourceIdx) return rawText;
+      if (amount === 0) return '';
+      
       const result = convert(amount, currentSlots[sourceIdx], code, currentRates);
-      return amount === 0 ? '' : result.toFixed(2);
+      
+      if (decimals === 'hide') {
+        return result.toFixed(0);
+      } else if (decimals === '1') {
+        return result.toFixed(1);
+      } else if (decimals === '4') {
+        return result.toFixed(4);
+      } else {
+        return result.toFixed(2);
+      }
     });
     setValues(newValues);
   }
