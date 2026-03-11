@@ -87,16 +87,24 @@ export default function ConverterScreen() {
       const savedSlots = await AsyncStorage.getItem('@setting_default_slots');
       if (savedSlots) {
         const parsed = JSON.parse(savedSlots);
-        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        const isValidArray = Array.isArray(parsed) &&
+          parsed.length === DEFAULT_SLOTS.length &&
+          parsed.every((item: any) => typeof item === 'string' && POPULAR_CURRENCIES.some(c => c.code === item));
+
+        if (isValidArray) {
           setSlots(parsed);
           // If rates exist, recalculate to reflect new slots
           if (rates) recalculate(activeSlot, values[activeSlot], parsed, rates);
           return parsed;
         } else {
+          setSlots(DEFAULT_SLOTS);
           await AsyncStorage.setItem('@setting_default_slots', JSON.stringify(DEFAULT_SLOTS));
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      setSlots(DEFAULT_SLOTS);
+      await AsyncStorage.setItem('@setting_default_slots', JSON.stringify(DEFAULT_SLOTS)).catch(() => {});
+    }
     return DEFAULT_SLOTS;
   }
 

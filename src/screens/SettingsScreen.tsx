@@ -53,11 +53,19 @@ export default function SettingsScreen({ onClose }: Props) {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
+          const isValidArray = Array.isArray(parsed) &&
+            parsed.length === DEFAULT_SLOTS.length &&
+            parsed.every(item => typeof item === 'string' && POPULAR_CURRENCIES.some(c => c.code === item));
+
+          if (isValidArray) {
             setSlots(parsed);
+          } else {
+            setSlots(DEFAULT_SLOTS);
+            AsyncStorage.setItem('@setting_default_slots', JSON.stringify(DEFAULT_SLOTS)).catch(() => {});
           }
         } catch (e) {
-          // Ignore invalid or corrupted JSON
+          setSlots(DEFAULT_SLOTS);
+          AsyncStorage.setItem('@setting_default_slots', JSON.stringify(DEFAULT_SLOTS)).catch(() => {});
         }
       }
     }).catch(() => {});
