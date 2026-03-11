@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,7 @@ export default function CurrencySlot({
   const { colors } = useTheme();
   const formattedValue = formatCurrencyValue(value);
 
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     // Outer Pressable covers the value area; badge has its own separate Pressable

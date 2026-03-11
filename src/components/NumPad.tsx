@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
@@ -19,7 +19,7 @@ const ROWS: string[][] = [
 
 export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps) {
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <View style={styles.container}>

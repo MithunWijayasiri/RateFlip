@@ -86,10 +86,14 @@ export default function ConverterScreen() {
       const savedSlots = await AsyncStorage.getItem('@setting_default_slots');
       if (savedSlots) {
         const parsed = JSON.parse(savedSlots);
-        setSlots(parsed);
-        // If rates exist, recalculate to reflect new slots
-        if (rates) recalculate(activeSlot, values[activeSlot], parsed, rates);
-        return parsed;
+        if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+          setSlots(parsed);
+          // If rates exist, recalculate to reflect new slots
+          if (rates) recalculate(activeSlot, values[activeSlot], parsed, rates);
+          return parsed;
+        } else {
+          await AsyncStorage.setItem('@setting_default_slots', JSON.stringify(DEFAULT_SLOTS));
+        }
       }
     } catch (e) {}
     return DEFAULT_SLOTS;
@@ -140,7 +144,7 @@ export default function ConverterScreen() {
           minute: '2-digit',
         })
       );
-      recalculate(activeSlot, values[activeSlot] || '1', slots, r);
+      recalculate(activeSlot, values[activeSlot] ?? '', slots, r);
     } catch (e: any) {
       setError(e.message ?? 'Failed to refresh rates');
     } finally {

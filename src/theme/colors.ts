@@ -35,6 +35,9 @@ export type ColorPalette = {
   segmentSelected: string;
   segmentSelectedText: string;
   segmentUnselectedText: string;
+
+  // Shadows
+  shadow: string;
 };
 
 export const darkColors: ColorPalette = {
@@ -65,6 +68,8 @@ export const darkColors: ColorPalette = {
   segmentSelected: '#2a2a2a',
   segmentSelectedText: '#ffffff',
   segmentUnselectedText: '#666666',
+
+  shadow: '#000000',
 };
 
 export const lightColors: ColorPalette = {
@@ -95,4 +100,6 @@ export const lightColors: ColorPalette = {
   segmentSelected: '#ffffff',
   segmentSelectedText: '#000000',
   segmentUnselectedText: '#8e8e93',
+
+  shadow: '#000000',
 };

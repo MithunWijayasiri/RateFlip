@@ -40,13 +40,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (saved === 'device' || saved === 'light' || saved === 'dark') {
         setPreferenceState(saved);
       }
-    });
+    }).catch(() => {});
 
     AsyncStorage.getItem(STORAGE_KEY_DECIMALS).then((saved) => {
       if (saved === 'hide' || saved === '1' || saved === '2' || saved === '4') {
         setDecimalsState(saved);
       }
-    });
+    }).catch(() => {});
   }, []);
 
   const setPreference = useCallback((pref: ThemePreference) => {

@@ -349,7 +349,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     segmentActive: {
       backgroundColor: colors.segmentSelected,
       // Subtle shadow for the active pill
-      shadowColor: '#000',
+      shadowColor: colors.shadow,
       shadowOpacity: 0.12,
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 1 },
