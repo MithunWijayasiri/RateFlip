@@ -47,6 +47,7 @@ export default function ConverterScreen() {
   const loopAnim = React.useRef<Animated.CompositeAnimation | null>(null);
 
   const startSpin = useCallback(() => {
+    loopAnim.current?.stop();
     spinAnim.setValue(0);
     loopAnim.current = Animated.loop(
       Animated.timing(spinAnim, {
@@ -129,6 +130,7 @@ export default function ConverterScreen() {
   }
 
   async function handleManualRefresh() {
+    if (isRefreshing) return;
     try {
       setIsRefreshing(true);
       startSpin();
