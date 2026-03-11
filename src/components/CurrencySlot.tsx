@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
 } from 'react-native';
 import { formatCurrencyValue } from '../utils/format';
+import { useTheme } from '../context/ThemeContext';
 
 interface Props {
   currencyCode: string;
@@ -25,7 +26,10 @@ export default function CurrencySlot({
   onFocus,
   onPressCurrency,
 }: Props) {
+  const { colors } = useTheme();
   const formattedValue = formatCurrencyValue(value);
+
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
     // Outer Pressable covers the value area; badge has its own separate Pressable
@@ -64,68 +68,70 @@ export default function CurrencySlot({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    marginVertical: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#2e2e2e',
-  },
-  rowPressed: {
-    opacity: 0.75,
-  },
-  activeRow: {
-    borderColor: '#4f8ef7',
-  },
-  duplicateRow: {
-    borderColor: '#c0392b',
-    backgroundColor: '#3b1c1c',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2a2a2a',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 12,
-    minWidth: 80,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    marginRight: 4,
-  },
-  chevron: {
-    color: '#888',
-    fontSize: 10,
-  },
-  valueContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  valueText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
-    textAlign: 'right',
-  },
-  placeholderText: {
-    color: '#555',
-  },
-  cursor: {
-    width: 2,
-    height: 24,
-    backgroundColor: '#4f8ef7',
-    marginLeft: 2,
-    borderRadius: 1,
-  },
-});
+function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      marginVertical: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 13,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rowPressed: {
+      opacity: 0.75,
+    },
+    activeRow: {
+      borderColor: colors.accent,
+    },
+    duplicateRow: {
+      borderColor: colors.duplicate,
+      backgroundColor: colors.duplicateBackground,
+    },
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 12,
+      minWidth: 80,
+    },
+    badgeText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+      marginRight: 4,
+    },
+    chevron: {
+      color: colors.textMuted,
+      fontSize: 10,
+    },
+    valueContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    valueText: {
+      color: colors.textPrimary,
+      fontSize: 27,
+      fontWeight: '300',
+      textAlign: 'right',
+    },
+    placeholderText: {
+      color: colors.textPlaceholder,
+    },
+    cursor: {
+      width: 2,
+      height: 28,
+      backgroundColor: colors.accent,
+      marginLeft: 2,
+      borderRadius: 1,
+    },
+  });
+}
