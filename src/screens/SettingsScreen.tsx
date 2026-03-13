@@ -19,7 +19,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
-import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
+import { DEFAULT_SLOTS } from '../constants/currencies';
 import { CurrencyInfo } from '../api/exchangeApi';
 
 const packageJson = require('../../package.json');

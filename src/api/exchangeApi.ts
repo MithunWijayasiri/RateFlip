@@ -157,7 +157,26 @@ export async function getCurrenciesList(): Promise<CurrencyInfo[]> {
   try {
     const cached = await AsyncStorage.getItem(KEY_CURRENCIES);
     if (cached) {
-      return JSON.parse(cached) as CurrencyInfo[];
+      try {
+        const parsed = JSON.parse(cached);
+        if (
+          Array.isArray(parsed) &&
+          parsed.every(
+            (c) =>
+              c &&
+              typeof c === 'object' &&
+              typeof (c as CurrencyInfo).code === 'string' &&
+              typeof (c as CurrencyInfo).name === 'string'
+          )
+        ) {
+          return parsed as CurrencyInfo[];
+        } else {
+          // Invalid shape in cache; clear and fall back to refetching
+          await AsyncStorage.removeItem(KEY_CURRENCIES);
+        }
+      } catch {
+        // Corrupted cache; fall back to refetching
+      }
     }
   } catch {
     // Ignore cache error
