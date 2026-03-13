@@ -17,6 +17,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { getRates, forceRefreshRates, convert, Rates } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
 import NumPad from '../components/NumPad';
@@ -26,8 +27,14 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ConverterScreen() {
-  const { colors, decimals } = useTheme();
+  const { colors, decimals, hapticsEnabled } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const triggerHaptic = useCallback(() => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  }, [hapticsEnabled]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [values, setValues] = useState<string[]>(['1', '', '']);
@@ -265,12 +272,14 @@ export default function ConverterScreen() {
   }
 
   function openPicker(slotIdx: number) {
+    triggerHaptic();
     setPickerTarget(slotIdx);
     setSearchQuery('');
     setPickerVisible(true);
   }
 
   const selectCurrency = useCallback((code: string) => {
+    triggerHaptic();
     if (pickerTarget === null) return;
     const newSlots = [...slots];
     newSlots[pickerTarget] = code;
@@ -336,7 +345,7 @@ export default function ConverterScreen() {
     return (
       <SafeAreaView style={styles.centered}>
         <Text style={styles.errorText}>⚠️ {error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => loadRates()}>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => { triggerHaptic(); loadRates(); }}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -355,7 +364,7 @@ export default function ConverterScreen() {
           <TouchableOpacity
             style={styles.settingsBtn}
             activeOpacity={0.7}
-            onPress={() => setShowSettings(true)}
+            onPress={() => { triggerHaptic(); setShowSettings(true); }}
           >
             <Text style={styles.settingsIcon}>⚙</Text>
           </TouchableOpacity>
@@ -381,7 +390,7 @@ export default function ConverterScreen() {
 
         <TouchableOpacity
           style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]}
-          onPress={handleManualRefresh}
+          onPress={() => { triggerHaptic(); handleManualRefresh(); }}
           disabled={isRefreshing}
         >
           <Animated.View style={{ transform: [{ rotate: spin }] }}>

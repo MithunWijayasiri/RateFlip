@@ -18,8 +18,13 @@ const ROWS: string[][] = [
 ];
 
 export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps) {
-  const { colors } = useTheme();
+  const { colors, triggerHaptic } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const handlePress = (action: () => void) => {
+    triggerHaptic();
+    action();
+  };
 
   return (
     <View style={styles.container}>
@@ -31,7 +36,7 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
                 key={key}
                 style={styles.key}
                 activeOpacity={0.6}
-                onPress={() => onKeyPress(key)}
+                onPress={() => handlePress(() => onKeyPress(key))}
               >
                 <Text style={styles.keyText}>{key}</Text>
               </TouchableOpacity>
@@ -45,7 +50,7 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
         <TouchableOpacity
           style={[styles.actionKey, styles.clearKey]}
           activeOpacity={0.6}
-          onPress={onClear}
+          onPress={() => handlePress(onClear)}
         >
           <Text style={styles.actionText}>AC</Text>
         </TouchableOpacity>
@@ -53,7 +58,7 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
         <TouchableOpacity
           style={[styles.actionKey, styles.backspaceKey]}
           activeOpacity={0.6}
-          onPress={onBackspace}
+          onPress={() => handlePress(onBackspace)}
         >
           <Text style={styles.backspaceIcon}>⌫</Text>
         </TouchableOpacity>

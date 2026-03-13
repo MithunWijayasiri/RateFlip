@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   BackHandler,
   Platform,
@@ -14,7 +14,9 @@ import {
   FlatList,
   ScrollView,
   Linking,
+  Switch,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
@@ -40,8 +42,14 @@ const DECIMALS_OPTIONS: { label: string; value: DecimalsPreference }[] = [
 ];
 
 export default function SettingsScreen({ onClose }: Props) {
-  const { colors, preference, setPreference, decimals, setDecimals } = useTheme();
+  const { colors, preference, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const triggerHaptic = useCallback(() => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  }, [hapticsEnabled]);
 
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -72,12 +80,14 @@ export default function SettingsScreen({ onClose }: Props) {
   }, []);
 
   const openPicker = (index: number) => {
+    triggerHaptic();
     setPickerTarget(index);
     setSearchQuery('');
     setPickerVisible(true);
   };
 
   const selectCurrency = (code: string) => {
+    triggerHaptic();
     if (pickerTarget === null) return;
     const newSlots = [...slots];
     newSlots[pickerTarget] = code;
@@ -109,7 +119,7 @@ export default function SettingsScreen({ onClose }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={onClose} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => { triggerHaptic(); onClose(); }} activeOpacity={0.7}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
@@ -137,7 +147,7 @@ export default function SettingsScreen({ onClose }: Props) {
                     key={opt.value}
                     style={[styles.segment, isSelected && styles.segmentActive]}
                     activeOpacity={0.7}
-                    onPress={() => setPreference(opt.value)}
+                    onPress={() => { triggerHaptic(); setPreference(opt.value); }}
                   >
                     <Text style={[styles.segmentText, isSelected && styles.segmentTextActive]}>
                       {opt.label}
@@ -163,7 +173,7 @@ export default function SettingsScreen({ onClose }: Props) {
                     key={opt.value}
                     style={[styles.segment, isSelected && styles.segmentActive]}
                     activeOpacity={0.7}
-                    onPress={() => setDecimals(opt.value)}
+                    onPress={() => { triggerHaptic(); setDecimals(opt.value); }}
                   >
                     <Text style={[styles.segmentText, isSelected && styles.segmentTextActive]}>
                       {opt.label}
@@ -171,6 +181,28 @@ export default function SettingsScreen({ onClose }: Props) {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Preferences Section ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>PREFERENCES</Text>
+          <View style={styles.card}>
+            <View style={[styles.settingRow, { alignItems: 'center', marginBottom: 0 }]}>
+              <View>
+                <Text style={styles.settingTitle}>Haptic Feedback</Text>
+                <Text style={styles.settingSubtitle}>Crisp vibrations for app interactions</Text>
+              </View>
+              <Switch
+                value={hapticsEnabled}
+                onValueChange={(val) => {
+                  if (val) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setHapticsEnabled(val);
+                }}
+                trackColor={{ false: colors.surfaceRaised, true: colors.accent }}
+                thumbColor={Platform.OS === 'android' ? colors.surface : undefined}
+              />
             </View>
           </View>
         </View>
@@ -214,7 +246,7 @@ export default function SettingsScreen({ onClose }: Props) {
             <TouchableOpacity
               style={styles.githubBtn}
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://github.com/MithunWijayasiri/RateFlip')}
+              onPress={() => { triggerHaptic(); Linking.openURL('https://github.com/MithunWijayasiri/RateFlip'); }}
             >
               <Text style={styles.githubBtnText}>View Source on GitHub</Text>
             </TouchableOpacity>

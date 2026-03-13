@@ -26,7 +26,7 @@ export default function CurrencySlot({
   onFocus,
   onPressCurrency,
 }: Props) {
-  const { colors } = useTheme();
+  const { colors, triggerHaptic } = useTheme();
   const formattedValue = formatCurrencyValue(value);
 
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -34,7 +34,10 @@ export default function CurrencySlot({
   return (
     // Outer Pressable covers the value area; badge has its own separate Pressable
     <Pressable
-      onPress={onFocus}
+      onPress={() => {
+        if (!isActive) triggerHaptic();
+        onFocus();
+      }}
       style={({ pressed }) => [
         styles.row,
         isDuplicate && styles.duplicateRow,
