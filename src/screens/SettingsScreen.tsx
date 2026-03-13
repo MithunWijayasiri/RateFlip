@@ -20,11 +20,13 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
+import { CurrencyInfo } from '../api/exchangeApi';
 
 const packageJson = require('../../package.json');
 
 interface Props {
   onClose: () => void;
+  currenciesList: CurrencyInfo[];
 }
 
 // Labels and values for the theme segmented control
@@ -41,7 +43,7 @@ const DECIMALS_OPTIONS: { label: string; value: DecimalsPreference }[] = [
   { label: '4', value: '4' },
 ];
 
-export default function SettingsScreen({ onClose }: Props) {
+export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const { colors, preference, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -63,7 +65,7 @@ export default function SettingsScreen({ onClose }: Props) {
           const parsed = JSON.parse(saved);
           const isValidArray = Array.isArray(parsed) &&
             parsed.length === DEFAULT_SLOTS.length &&
-            parsed.every(item => typeof item === 'string' && POPULAR_CURRENCIES.some(c => c.code === item));
+            parsed.every(item => typeof item === 'string' && currenciesList.some(c => c.code === item));
 
           if (isValidArray) {
             setSlots(parsed);
@@ -77,7 +79,7 @@ export default function SettingsScreen({ onClose }: Props) {
         }
       }
     }).catch(() => {});
-  }, []);
+  }, [currenciesList]);
 
   const openPicker = (index: number) => {
     triggerHaptic();
@@ -98,12 +100,12 @@ export default function SettingsScreen({ onClose }: Props) {
 
   const filteredCurrencies = useMemo(
     () =>
-      POPULAR_CURRENCIES.filter(
+      currenciesList.filter(
         (c) =>
           c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.name.toLowerCase().includes(searchQuery.toLowerCase())
       ),
-    [searchQuery]
+    [searchQuery, currenciesList]
   );
 
   useEffect(() => {
@@ -212,7 +214,7 @@ export default function SettingsScreen({ onClose }: Props) {
           <Text style={styles.sectionLabel}>DEFAULT CURRENCIES</Text>
           <View style={styles.card}>
             {slots.map((code, index) => {
-              const currency = POPULAR_CURRENCIES.find((c) => c.code === code);
+              const currency = currenciesList.find((c) => c.code === code);
               return (
                 <View key={index}>
                   <TouchableOpacity

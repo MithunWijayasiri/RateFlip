@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { getRates, forceRefreshRates, convert, Rates } from '../api/exchangeApi';
+import { getRates, forceRefreshRates, convert, Rates, getCurrenciesList, CurrencyInfo } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
 import NumPad from '../components/NumPad';
 import SettingsScreen from './SettingsScreen';
@@ -39,6 +39,7 @@ export default function ConverterScreen() {
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [values, setValues] = useState<string[]>(['1', '', '']);
   const [rates, setRates] = useState<Rates | null>(null);
+  const [currenciesList, setCurrenciesList] = useState<CurrencyInfo[]>(POPULAR_CURRENCIES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSlot, setActiveSlot] = useState(0);
@@ -89,14 +90,14 @@ export default function ConverterScreen() {
     init();
   }, []);
 
-  async function fetchSettings() {
+  async function fetchSettings(currList: CurrencyInfo[] = currenciesList) {
     try {
       const savedSlots = await AsyncStorage.getItem('@setting_default_slots');
       if (savedSlots) {
         const parsed = JSON.parse(savedSlots);
         const isValidArray = Array.isArray(parsed) &&
           parsed.length === DEFAULT_SLOTS.length &&
-          parsed.every((item: any) => typeof item === 'string' && POPULAR_CURRENCIES.some(c => c.code === item));
+          parsed.every((item: any) => typeof item === 'string' && currList.some(c => c.code === item));
 
         if (isValidArray) {
           setSlots(parsed);
@@ -116,7 +117,17 @@ export default function ConverterScreen() {
   }
 
   async function init() {
-    const currentSlots = await fetchSettings();
+    let list = POPULAR_CURRENCIES;
+    try {
+      list = await getCurrenciesList();
+      if (list && list.length > 0) {
+        setCurrenciesList(list);
+      } else {
+        list = POPULAR_CURRENCIES;
+      }
+    } catch {}
+
+    const currentSlots = await fetchSettings(list);
     loadRates(currentSlots);
   }
 
@@ -312,20 +323,21 @@ export default function ConverterScreen() {
 
   const filteredCurrencies = useMemo(
     () =>
-      POPULAR_CURRENCIES.filter(
+      currenciesList.filter(
         (c) =>
           c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.name.toLowerCase().includes(searchQuery.toLowerCase())
       ),
-    [searchQuery]
+    [searchQuery, currenciesList]
   );
 
   if (showSettings) {
     return (
       <SettingsScreen
+        currenciesList={currenciesList}
         onClose={() => {
           setShowSettings(false);
-          fetchSettings();
+          fetchSettings(currenciesList);
         }}
       />
     );
