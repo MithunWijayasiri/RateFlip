@@ -284,7 +284,6 @@ export default function ConverterScreen() {
     const newSlots = [...slots];
     newSlots[pickerTarget] = code;
     setSlots(newSlots);
-    AsyncStorage.setItem('@setting_default_slots', JSON.stringify(newSlots)).catch(() => {});
     setPickerVisible(false);
     setSearchQuery('');
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);

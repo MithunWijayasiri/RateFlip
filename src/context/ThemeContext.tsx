@@ -30,7 +30,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   preference: 'device',
   resolvedTheme: 'dark',
   setPreference: () => {},
-  decimals: 'hide',
+  decimals: '2',
   setDecimals: () => {},
   hapticsEnabled: true,
   setHapticsEnabled: () => {},
@@ -40,7 +40,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const deviceScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('device');
-  const [decimals, setDecimalsState] = useState<DecimalsPreference>('hide');
+  const [decimals, setDecimalsState] = useState<DecimalsPreference>('2');
   const [hapticsEnabled, setHapticsEnabledState] = useState<boolean>(true);
 
   // Load saved preference from storage on mount
