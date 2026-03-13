@@ -10,7 +10,7 @@ Type in any currency slot and all others update instantly.
 - **Live exchange rates** — fetched daily, no API key required
 - **Instant conversion** — all slots update as you type
 - **Custom in-app numpad** — no system keyboard; clean numeric input
-- **21 popular currencies** — AED, AUD, BRL, CAD, CHF, CNY, EUR, GBP, HKD, IDR, INR, JPY, KRW, LKR, MYR, PHP, SAR, SGD, THB, USD, VND
+- **Major fiat & crypto currencies** — dynamically fetched and cached locally
 - **Automatic fallback** — switches to a backup API if the primary is unavailable
 - **Duplicate slot indicator** — highlights slots sharing the same currency
 - **Theming** — switch between Device, Light, and Dark modes
@@ -60,7 +60,8 @@ src/
 │   ├── CurrencySlot.tsx     # Currency input row with custom numpad integration
 │   └── NumPad.tsx           # Custom in-app numeric keypad
 ├── constants/
-│   └── currencies.ts        # Supported currency list
+│   ├── currencies.ts        # Default fallback & popular shortcuts
+│   └── iso_currencies.json  # Whitelist for fiat and major crypto codes
 ├── context/
 │   └── ThemeContext.tsx     # Theme state and persistence
 ├── screens/

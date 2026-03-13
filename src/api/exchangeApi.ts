@@ -5,6 +5,7 @@ const KEY_RATES = 'rateflip_rates';
 const KEY_LAST_DATE = 'rateflip_last_date';
 const KEY_FETCH_COUNT = 'rateflip_fetch_count';
 const KEY_LAST_FETCH_TIME = 'rateflip_last_fetch_time';
+const KEY_CURRENCIES = 'rateflip_currencies_v2';
 
 // Max automatic fetches allowed per calendar day
 const MAX_DAILY_AUTO_FETCHES = 2;
@@ -17,7 +18,17 @@ const PRIMARY_URL =
 const FALLBACK_URL =
   'https://api.frankfurter.dev/latest?base=USD';
 
+const CURRENCIES_URL =
+  'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies.json';
+
+const FALLBACK_CURRENCIES_URL =
+  'https://api.frankfurter.dev/currencies';
+
+const ISO_CURRENCIES_LIST = require('../constants/iso_currencies.json') as string[];
+const ISO_CURRENCIES = new Set(ISO_CURRENCIES_LIST);
+
 export type Rates = Record<string, number>;
+export type CurrencyInfo = { code: string; name: string };
 
 function getTodayString(): string {
   const now = new Date();
@@ -139,6 +150,73 @@ export async function forceRefreshRates(): Promise<Rates> {
   await AsyncStorage.setItem(KEY_LAST_DATE, today);
   await AsyncStorage.setItem(KEY_FETCH_COUNT, '1');
   await AsyncStorage.setItem(KEY_LAST_FETCH_TIME, String(Date.now()));
+  return fresh;
+}
+
+export async function getCurrenciesList(): Promise<CurrencyInfo[]> {
+  try {
+    const cached = await AsyncStorage.getItem(KEY_CURRENCIES);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (
+          Array.isArray(parsed) &&
+          parsed.every(
+            (c) =>
+              c &&
+              typeof c === 'object' &&
+              typeof (c as CurrencyInfo).code === 'string' &&
+              typeof (c as CurrencyInfo).name === 'string'
+          )
+        ) {
+          return parsed as CurrencyInfo[];
+        } else {
+          // Invalid shape in cache; clear and fall back to refetching
+          await AsyncStorage.removeItem(KEY_CURRENCIES);
+        }
+      } catch {
+        // Corrupted cache; fall back to refetching
+      }
+    }
+  } catch {
+    // Ignore cache error
+  }
+
+  let fresh: CurrencyInfo[] = [];
+  try {
+    const res = await fetch(CURRENCIES_URL);
+    if (!res.ok) throw new Error('Primary API failed');
+    const data = await res.json();
+    for (const [key, val] of Object.entries(data)) {
+      const code = key.toUpperCase();
+      if (val && ISO_CURRENCIES.has(code)) {
+        fresh.push({ code, name: val as string });
+      }
+    }
+  } catch {
+    try {
+      const res = await fetch(FALLBACK_CURRENCIES_URL);
+      if (!res.ok) throw new Error('Fallback API also failed');
+      const data = await res.json();
+      for (const [key, val] of Object.entries(data)) {
+        const code = key.toUpperCase();
+        if (val && ISO_CURRENCIES.has(code)) {
+          fresh.push({ code, name: val as string });
+        }
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  if (fresh.length > 0) {
+    try {
+      await AsyncStorage.setItem(KEY_CURRENCIES, JSON.stringify(fresh));
+    } catch {
+      // Ignore cache write error
+    }
+  }
+  
   return fresh;
 }
 
