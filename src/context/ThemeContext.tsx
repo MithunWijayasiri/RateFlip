@@ -15,10 +15,13 @@ type ThemeContextValue = {
   setPreference: (pref: ThemePreference) => void;
   decimals: DecimalsPreference;
   setDecimals: (pref: DecimalsPreference) => void;
+  hapticsEnabled: boolean;
+  setHapticsEnabled: (enabled: boolean) => void;
 };
 
 const STORAGE_KEY = '@setting_theme';
 const STORAGE_KEY_DECIMALS = '@setting_decimals';
+const STORAGE_KEY_HAPTICS = '@setting_haptics';
 
 const ThemeContext = createContext<ThemeContextValue>({
   colors: darkColors,
@@ -27,12 +30,15 @@ const ThemeContext = createContext<ThemeContextValue>({
   setPreference: () => {},
   decimals: 'hide',
   setDecimals: () => {},
+  hapticsEnabled: true,
+  setHapticsEnabled: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const deviceScheme = useColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>('device');
   const [decimals, setDecimalsState] = useState<DecimalsPreference>('hide');
+  const [hapticsEnabled, setHapticsEnabledState] = useState<boolean>(true);
 
   // Load saved preference from storage on mount
   useEffect(() => {
@@ -47,6 +53,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setDecimalsState(saved);
       }
     }).catch(() => {});
+
+    AsyncStorage.getItem(STORAGE_KEY_HAPTICS).then((saved) => {
+      if (saved !== null) {
+        setHapticsEnabledState(saved === 'true');
+      }
+    }).catch(() => {});
   }, []);
 
   const setPreference = useCallback((pref: ThemePreference) => {
@@ -59,6 +71,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY_DECIMALS, pref).catch(() => {});
   }, []);
 
+  const setHapticsEnabled = useCallback((enabled: boolean) => {
+    setHapticsEnabledState(enabled);
+    AsyncStorage.setItem(STORAGE_KEY_HAPTICS, enabled ? 'true' : 'false').catch(() => {});
+  }, []);
+
   // Resolve actual light/dark from preference + device scheme
   const resolvedTheme: 'light' | 'dark' =
     preference === 'device'
@@ -68,7 +85,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const colors = resolvedTheme === 'light' ? lightColors : darkColors;
 
   return (
-    <ThemeContext.Provider value={{ colors, preference, resolvedTheme, setPreference, decimals, setDecimals }}>
+    <ThemeContext.Provider value={{ colors, preference, resolvedTheme, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled }}>
       {children}
     </ThemeContext.Provider>
   );

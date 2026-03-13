@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Pressable,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { formatCurrencyValue } from '../utils/format';
 import { useTheme } from '../context/ThemeContext';
 
@@ -26,15 +27,24 @@ export default function CurrencySlot({
   onFocus,
   onPressCurrency,
 }: Props) {
-  const { colors } = useTheme();
+  const { colors, hapticsEnabled } = useTheme();
   const formattedValue = formatCurrencyValue(value);
 
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
+  const triggerHaptic = () => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  };
+
   return (
     // Outer Pressable covers the value area; badge has its own separate Pressable
     <Pressable
-      onPress={onFocus}
+      onPress={() => {
+        if (!isActive) triggerHaptic();
+        onFocus();
+      }}
       style={({ pressed }) => [
         styles.row,
         isDuplicate && styles.duplicateRow,
