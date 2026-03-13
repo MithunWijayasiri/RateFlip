@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { useTheme } from '../context/ThemeContext';
 
 interface NumPadProps {
@@ -19,13 +18,11 @@ const ROWS: string[][] = [
 ];
 
 export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps) {
-  const { colors, hapticsEnabled } = useTheme();
+  const { colors, triggerHaptic } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const handlePress = (action: () => void) => {
-    if (hapticsEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
+    triggerHaptic();
     action();
   };
 

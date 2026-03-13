@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { ColorPalette, darkColors, lightColors } from '../theme/colors';
 
 export type ThemePreference = 'device' | 'light' | 'dark';
@@ -17,6 +18,7 @@ type ThemeContextValue = {
   setDecimals: (pref: DecimalsPreference) => void;
   hapticsEnabled: boolean;
   setHapticsEnabled: (enabled: boolean) => void;
+  triggerHaptic: () => void;
 };
 
 const STORAGE_KEY = '@setting_theme';
@@ -32,6 +34,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   setDecimals: () => {},
   hapticsEnabled: true,
   setHapticsEnabled: () => {},
+  triggerHaptic: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -76,6 +79,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY_HAPTICS, enabled ? 'true' : 'false').catch(() => {});
   }, []);
 
+  const triggerHaptic = useCallback(() => {
+    if (hapticsEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  }, [hapticsEnabled]);
+
   // Resolve actual light/dark from preference + device scheme
   const resolvedTheme: 'light' | 'dark' =
     preference === 'device'
@@ -85,7 +94,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const colors = resolvedTheme === 'light' ? lightColors : darkColors;
 
   return (
-    <ThemeContext.Provider value={{ colors, preference, resolvedTheme, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled }}>
+    <ThemeContext.Provider value={{ colors, preference, resolvedTheme, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled, triggerHaptic }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -192,7 +192,7 @@ export default function SettingsScreen({ onClose }: Props) {
             <View style={[styles.settingRow, { alignItems: 'center', marginBottom: 0 }]}>
               <View>
                 <Text style={styles.settingTitle}>Haptic Feedback</Text>
-                <Text style={styles.settingSubtitle}>Crisp vibrations on keypad</Text>
+                <Text style={styles.settingSubtitle}>Crisp vibrations for app interactions</Text>
               </View>
               <Switch
                 value={hapticsEnabled}
