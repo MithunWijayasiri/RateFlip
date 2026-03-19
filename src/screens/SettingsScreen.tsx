@@ -44,7 +44,7 @@ const DECIMALS_OPTIONS: { label: string; value: DecimalsPreference }[] = [
 ];
 
 export default function SettingsScreen({ onClose, currenciesList }: Props) {
-  const { colors, preference, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled } = useTheme();
+  const { colors, preference, setPreference, decimals, setDecimals, hapticsEnabled, setHapticsEnabled, resolvedTheme } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const triggerHaptic = useCallback(() => {
@@ -129,7 +129,7 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
         <View style={styles.backBtn} />
       </View>
 
-      <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.body} showsVerticalScrollIndicator={true} indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}>
         {/* ── Theme Section ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>APPEARANCE</Text>
@@ -202,8 +202,8 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
                   if (val) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                   setHapticsEnabled(val);
                 }}
-                trackColor={{ false: colors.surfaceRaised, true: colors.accent }}
-                thumbColor={Platform.OS === 'android' ? colors.surface : undefined}
+                trackColor={{ false: colors.borderSubtle, true: colors.accent }}
+                thumbColor={Platform.OS === 'android' ? (hapticsEnabled ? '#ffffff' : '#f4f3f4') : undefined}
               />
             </View>
           </View>
@@ -281,6 +281,8 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
             data={filteredCurrencies}
             keyExtractor={(item) => item.code}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+            indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.currencyItem}

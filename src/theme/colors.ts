@@ -47,11 +47,11 @@ export const darkColors: ColorPalette = {
 
   textPrimary: '#ffffff',
   textSecondary: '#aaaaaa',
-  textMuted: '#555555',
-  textPlaceholder: '#555555',
+  textMuted: '#8e8e93',
+  textPlaceholder: '#7a7a7c',
 
-  border: '#2e2e2e',
-  borderSubtle: '#3a3a3a',
+  border: '#38383a',
+  borderSubtle: '#48484a',
 
   accent: '#4f8ef7',
 

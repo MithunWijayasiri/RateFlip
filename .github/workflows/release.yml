@@ -18,22 +18,24 @@ jobs:
   build:
     name: Build & Release APK
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       contents: write
 
     steps:
       # ── 1. Checkout the chosen release branch ─────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.release_branch }}
           fetch-depth: 0
 
       # ── 2. Set up Node.js ─────────────────────────────────────────────────
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       # ── 3. Install dependencies ───────────────────────────────────────────
