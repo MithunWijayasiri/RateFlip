@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,6 +7,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   StatusBar as RNStatusBar,
   StyleSheet,
@@ -14,7 +15,6 @@ import {
   TextInput,
   ToastAndroid,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -27,7 +27,7 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ConverterScreen() {
-  const { colors, decimals, hapticsEnabled } = useTheme();
+  const { colors, resolvedTheme, decimals, hapticsEnabled } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const triggerHaptic = useCallback(() => {
@@ -308,19 +308,7 @@ export default function ConverterScreen() {
     return new Set(Object.keys(count).filter((k) => count[k] > 1));
   }, [slots]);
 
-  const renderCurrencyItem = useCallback(
-    ({ item }: { item: { code: string; name: string } }) => (
-      <TouchableOpacity
-        style={styles.currencyItem}
-        onPress={() => selectCurrency(item.code)}
-      >
-        <Text style={styles.currencyCode}>{item.code}</Text>
-        <Text style={styles.currencyName}>{item.name}</Text>
-      </TouchableOpacity>
-    ),
-    [selectCurrency, styles]
-  );
-
+  const flatListRef = useRef<FlatList>(null);
   const filteredCurrencies = useMemo(
     () =>
       currenciesList.filter(
@@ -329,6 +317,20 @@ export default function ConverterScreen() {
           c.name.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     [searchQuery, currenciesList]
+  );
+
+  const renderCurrencyItem = useCallback(
+    ({ item }: { item: { code: string; name: string } }) => (
+      <Pressable
+        style={styles.currencyItem}
+        onPress={() => selectCurrency(item.code)}
+        android_ripple={{ color: colors.surfaceRaised }}
+      >
+        <Text style={styles.currencyItemCode}>{item.code}</Text>
+        <Text style={styles.currencyItemText}>{item.name}</Text>
+      </Pressable>
+    ),
+    [selectCurrency, styles, colors]
   );
 
   if (showSettings) {
@@ -419,37 +421,59 @@ export default function ConverterScreen() {
         onClear={handleClear}
       />
 
-      {/* Currency Picker Modal */}
+      {/* Currency Picker Modal - Full Screen */}
       <Modal
         visible={pickerVisible}
-        transparent
         animationType="slide"
         onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
       >
-        <TouchableWithoutFeedback onPress={() => { setPickerVisible(false); setSearchQuery(''); }}>
-          <View style={styles.modalOverlay} />
-        </TouchableWithoutFeedback>
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Select Currency</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search currency..."
-            placeholderTextColor={colors.textPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
-          <FlatList
-            data={filteredCurrencies}
-            keyExtractor={(item) => item.code}
-            keyboardShouldPersistTaps="handled"
-            renderItem={renderCurrencyItem}
-            ListEmptyComponent={
-              <Text style={styles.noResults}>No currencies found</Text>
-            }
-          />
-        </View>
+        <SafeAreaView style={styles.pickerContainer}>
+          {/* Header */}
+          <View style={styles.pickerHeader}>
+            <TouchableOpacity
+              style={styles.pickerBackBtn}
+              onPress={() => { triggerHaptic(); setPickerVisible(false); setSearchQuery(''); }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Text style={styles.pickerBackIcon}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.pickerTitle}>Select currency</Text>
+          </View>
+
+          {/* Search bar */}
+          <View style={styles.searchBarWrapper}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search..."
+              placeholderTextColor={colors.textPlaceholder}
+              selectionColor={colors.accent}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+            />
+          </View>
+
+          {/* Currency list */}
+          <View style={styles.pickerBody}>
+            <FlatList
+              ref={flatListRef}
+              data={filteredCurrencies}
+              keyExtractor={(item) => item.code}
+              keyboardShouldPersistTaps="handled"
+              renderItem={renderCurrencyItem}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
+              ListEmptyComponent={
+                <Text style={styles.noResults}>No currencies found</Text>
+              }
+              onScrollToIndexFailed={() => {}}
+            />
+          </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -553,58 +577,83 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       color: colors.textMuted,
       fontSize: 13,
     },
-    modalOverlay: {
+    // Full-screen picker styles
+    pickerContainer: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
+      backgroundColor: colors.background,
     },
-    modalSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 16,
+    pickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: 16,
-      maxHeight: '60%',
+      paddingTop: 16,
+      paddingBottom: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    modalTitle: {
+    pickerBackBtn: {
+      marginRight: 16,
+    },
+    pickerBackIcon: {
+      color: colors.textPrimary,
+      fontSize: 24,
+      lineHeight: 28,
+    },
+    pickerTitle: {
       color: colors.textPrimary,
       fontSize: 18,
       fontWeight: '600',
-      marginBottom: 12,
-      textAlign: 'center',
+    },
+    searchBarWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceRaised,
+      borderRadius: 14,
+      marginHorizontal: 16,
+      marginTop: 6,
+      marginBottom: 10,
+      paddingHorizontal: 16,
+      paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.borderSubtle,
+    },
+    searchIcon: {
+      color: colors.textMuted,
+      fontSize: 22,
+      marginRight: 10,
     },
     searchInput: {
-      backgroundColor: colors.surfaceRaised,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
+      flex: 1,
       color: colors.textPrimary,
-      fontSize: 14,
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
+      fontSize: 15,
+      paddingVertical: 0,
+    },
+    pickerBody: {
+      flex: 1,
     },
     noResults: {
       color: colors.textMuted,
       textAlign: 'center',
-      marginTop: 24,
+      marginTop: 40,
       fontSize: 14,
     },
     currencyItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceRaised,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
     },
-    currencyCode: {
+    currencyItemCode: {
       color: colors.textPrimary,
       fontWeight: '700',
       fontSize: 16,
-      width: 56,
+      width: 50,
+      marginRight: 10,
     },
-    currencyName: {
+    currencyItemText: {
       color: colors.textSecondary,
-      fontSize: 14,
+      fontSize: 15,
+      flex: 1,
     },
   });
 }
