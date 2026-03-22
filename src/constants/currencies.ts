@@ -2,6 +2,7 @@ export const POPULAR_CURRENCIES = [
   { code: 'AED', name: 'UAE Dirham' },
   { code: 'AUD', name: 'Australian Dollar' },
   { code: 'BRL', name: 'Brazilian Real' },
+  { code: 'BTC', name: 'Bitcoin' },
   { code: 'CAD', name: 'Canadian Dollar' },
   { code: 'CHF', name: 'Swiss Franc' },
   { code: 'CNY', name: 'Chinese Yuan' },
@@ -22,4 +23,4 @@ export const POPULAR_CURRENCIES = [
   { code: 'VND', name: 'Vietnamese Dong' },
 ];
 
-export const DEFAULT_SLOTS = ['USD', 'CNY', 'LKR'];
+export const DEFAULT_SLOTS = ['USD', 'EUR', 'BTC'];
