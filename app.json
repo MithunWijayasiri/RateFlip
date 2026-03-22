@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "backgroundColor": "#064ce7"
     },
     "ios": {
       "supportsTablet": true
@@ -18,7 +18,7 @@
       "package": "com.rateflip.currencyconverter",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#121212",
+        "backgroundColor": "#064ce7",
         "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false,
