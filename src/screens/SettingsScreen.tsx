@@ -15,6 +15,7 @@ import {
   ScrollView,
   Linking,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,6 +60,27 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  type UpdateStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'error';
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+
+  const checkForUpdates = useCallback(async () => {
+    triggerHaptic();
+    setUpdateStatus('checking');
+    try {
+      const res = await fetch('https://api.github.com/repos/MithunWijayasiri/RateFlip/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json() as { tag_name: string };
+      const latest = data.tag_name.replace(/^v/, '');
+      setLatestVersion(latest);
+      setUpdateStatus(latest === appVersion ? 'up-to-date' : 'available');
+    } catch {
+      setUpdateStatus('error');
+    }
+  }, [triggerHaptic]);
 
   useEffect(() => {
     AsyncStorage.getItem('@setting_default_slots').then((saved) => {
@@ -254,6 +276,31 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
             >
               <Text style={styles.githubBtnText}>View Source on GitHub</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.checkUpdateBtn, updateStatus === 'checking' && { opacity: 0.7 }]}
+              activeOpacity={0.7}
+              disabled={updateStatus === 'checking'}
+              onPress={checkForUpdates}
+            >
+              {updateStatus === 'checking' ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.checkUpdateBtnText}>Check for Updates</Text>
+              )}
+            </TouchableOpacity>
+            {updateStatus === 'up-to-date' && (
+              <Text style={[styles.updateStatusText, { color: colors.accent }]}>You're up to date</Text>
+            )}
+            {updateStatus === 'available' && (
+              <TouchableOpacity onPress={() => { triggerHaptic(); Linking.openURL('https://github.com/MithunWijayasiri/RateFlip/releases/latest'); }}>
+                <Text style={[styles.updateStatusText, { color: colors.accent }]}>
+                  Version {latestVersion} available — tap to open
+                </Text>
+              </TouchableOpacity>
+            )}
+            {updateStatus === 'error' && (
+              <Text style={[styles.updateStatusText, { color: colors.error }]}>Failed to check for updates</Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -505,6 +552,26 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       color: colors.textPrimary,
       fontWeight: '600',
       fontSize: 14,
+    },
+    checkUpdateBtn: {
+      backgroundColor: colors.surfaceRaised,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      marginTop: 8,
+    },
+    checkUpdateBtnText: {
+      color: colors.accent,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    updateStatusText: {
+      textAlign: 'center',
+      fontSize: 13,
+      marginTop: 10,
+      fontWeight: '500',
     },
   });
 }
