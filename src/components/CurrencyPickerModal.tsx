@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   StatusBar,
-  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CurrencyInfo } from '../api/exchangeApi';
 import { useTheme } from '../context/ThemeContext';
 
@@ -67,7 +67,8 @@ export default function CurrencyPickerModal({ visible, currencies, onSelect, onC
   );
 
   // Sheet starts just below the status bar so no blank space appears above the header
-  const statusBarHeight = Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) : 20;
+  const insets = useSafeAreaInsets();
+  const statusBarHeight = insets.top;
 
   return (
     <Modal

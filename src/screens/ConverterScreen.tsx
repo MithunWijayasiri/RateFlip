@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Easing,
   Platform,
   StyleSheet,
@@ -53,6 +54,7 @@ export default function ConverterScreen() {
   const spinAnim = useRef(new Animated.Value(0)).current;
   const loopAnim = useRef<Animated.CompositeAnimation | null>(null);
   const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cooldownEndTimeRef = useRef<number | null>(null);
 
   const startSpin = useCallback(() => {
     loopAnim.current?.stop();
@@ -69,7 +71,20 @@ export default function ConverterScreen() {
   }, [spinAnim]);
 
   useEffect(() => {
+    // Re-sync the cooldown display whenever the app returns to the foreground
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && cooldownEndTimeRef.current !== null) {
+        const remaining = Math.ceil((cooldownEndTimeRef.current - Date.now()) / 1000);
+        setRefreshCooldownSecs(remaining > 0 ? remaining : 0);
+        if (remaining <= 0) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          cooldownIntervalRef.current = null;
+          cooldownEndTimeRef.current = null;
+        }
+      }
+    });
     return () => {
+      sub.remove();
       // Clean up the animation and cooldown timer safely on unmount
       loopAnim.current?.stop();
       if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
@@ -78,17 +93,22 @@ export default function ConverterScreen() {
 
   const startCooldown = useCallback((initialSecs: number) => {
     if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
-    setRefreshCooldownSecs(initialSecs);
-    cooldownIntervalRef.current = setInterval(() => {
-      setRefreshCooldownSecs(prev => {
-        if (prev <= 1) {
-          clearInterval(cooldownIntervalRef.current!);
-          cooldownIntervalRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    cooldownEndTimeRef.current = Date.now() + initialSecs * 1000;
+    // Derive remaining time from the end timestamp on every tick so background
+    // throttling of JS timers doesn't leave a stale non-zero countdown.
+    const tick = () => {
+      const remaining = Math.ceil(((cooldownEndTimeRef.current ?? 0) - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(cooldownIntervalRef.current!);
+        cooldownIntervalRef.current = null;
+        cooldownEndTimeRef.current = null;
+        setRefreshCooldownSecs(0);
+      } else {
+        setRefreshCooldownSecs(remaining);
+      }
+    };
+    tick();
+    cooldownIntervalRef.current = setInterval(tick, 1000);
   }, []);
 
   useEffect(() => {

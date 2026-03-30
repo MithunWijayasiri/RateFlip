@@ -63,9 +63,12 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const checkForUpdates = useCallback(async () => {
     triggerHaptic();
     setUpdateStatus('checking');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
       const res = await fetch('https://api.github.com/repos/MithunWijayasiri/RateFlip/releases/latest', {
         headers: { Accept: 'application/vnd.github+json' },
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error('Network error');
       const data = await res.json() as { tag_name: string };
@@ -74,6 +77,8 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
       setUpdateStatus(latest === appVersion ? 'up-to-date' : 'available');
     } catch {
       setUpdateStatus('error');
+    } finally {
+      clearTimeout(timeout);
     }
   }, [triggerHaptic]);
 
