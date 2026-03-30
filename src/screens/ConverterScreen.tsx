@@ -23,6 +23,9 @@ import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const LAST_REFRESH_KEY = '@last_manual_refresh';
+
 export default function ConverterScreen() {
   const { colors, resolvedTheme, decimals, hapticsEnabled } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -47,8 +50,10 @@ export default function ConverterScreen() {
   const [isCached, setIsCached] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshCooldownSecs, setRefreshCooldownSecs] = useState(0);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const loopAnim = useRef<Animated.CompositeAnimation | null>(null);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startSpin = useCallback(() => {
     loopAnim.current?.stop();
@@ -66,9 +71,25 @@ export default function ConverterScreen() {
 
   useEffect(() => {
     return () => {
-      // Clean up the animation safely on unmount
+      // Clean up the animation and cooldown timer safely on unmount
       loopAnim.current?.stop();
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
     };
+  }, []);
+
+  const startCooldown = useCallback((initialSecs: number) => {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    setRefreshCooldownSecs(initialSecs);
+    cooldownIntervalRef.current = setInterval(() => {
+      setRefreshCooldownSecs(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownIntervalRef.current!);
+          cooldownIntervalRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   }, []);
 
   useEffect(() => {
@@ -123,6 +144,16 @@ export default function ConverterScreen() {
       }
     } catch {}
 
+    // Restore cooldown if user refreshed recently in a prior session
+    try {
+      const lastRefreshStr = await AsyncStorage.getItem(LAST_REFRESH_KEY);
+      if (lastRefreshStr) {
+        const elapsed = Date.now() - parseInt(lastRefreshStr, 10);
+        const remainingSecs = Math.ceil((REFRESH_COOLDOWN_MS - elapsed) / 1000);
+        if (remainingSecs > 0) startCooldown(remainingSecs);
+      }
+    } catch {}
+
     const currentSlots = await fetchSettings(list);
     loadRates(currentSlots);
   }
@@ -152,7 +183,7 @@ export default function ConverterScreen() {
   }
 
   async function handleManualRefresh() {
-    if (isRefreshing) return;
+    if (isRefreshing || refreshCooldownSecs > 0) return;
     try {
       setIsRefreshing(true);
       startSpin();
@@ -169,6 +200,9 @@ export default function ConverterScreen() {
         })
       );
       recalculate(activeSlot, values[activeSlot] ?? '', slots, r);
+      // Persist timestamp and start the 5-minute cooldown
+      await AsyncStorage.setItem(LAST_REFRESH_KEY, Date.now().toString());
+      startCooldown(REFRESH_COOLDOWN_MS / 1000);
     } catch (e: any) {
       setError(e.message ?? 'Failed to refresh rates');
     } finally {
@@ -371,15 +405,23 @@ export default function ConverterScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]}
+          style={[
+            styles.refreshBtn,
+            { flexDirection: 'row', alignItems: 'center' },
+            (isRefreshing || refreshCooldownSecs > 0) && { opacity: 0.45 },
+          ]}
           onPress={() => { triggerHaptic(); handleManualRefresh(); }}
-          disabled={isRefreshing}
+          disabled={isRefreshing || refreshCooldownSecs > 0}
         >
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
             <Text style={[styles.refreshText, { marginRight: 6 }]}>↻</Text>
           </Animated.View>
           <Text style={styles.refreshText}>
-            {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
+            {isRefreshing
+              ? 'Refreshing...'
+              : refreshCooldownSecs > 0
+                ? `Available in ${Math.floor(refreshCooldownSecs / 60)}m ${String(refreshCooldownSecs % 60).padStart(2, '0')}s`
+                : 'Refresh Rates'}
           </Text>
         </TouchableOpacity>
       </View>
