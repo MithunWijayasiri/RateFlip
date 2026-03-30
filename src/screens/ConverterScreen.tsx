@@ -5,14 +5,13 @@ import {
   Animated,
   Easing,
   Platform,
-  SafeAreaView,
-  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
   ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getRates, forceRefreshRates, convert, Rates, getCurrenciesList, CurrencyInfo } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
@@ -447,7 +446,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
     },
     topContent: {
       flex: 1,

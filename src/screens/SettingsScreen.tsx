@@ -2,8 +2,6 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   BackHandler,
   Platform,
-  SafeAreaView,
-  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,6 +11,7 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
@@ -305,7 +304,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
     },
     header: {
       flexDirection: 'row',
