@@ -22,7 +22,9 @@ import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeC
 import { DEFAULT_SLOTS } from '../constants/currencies';
 import { CurrencyInfo } from '../api/exchangeApi';
 
-const packageJson = require('../../package.json');
+import Constants from 'expo-constants';
+
+const appVersion = Constants.expoConfig?.version ?? '—';
 
 interface Props {
   onClose: () => void;
@@ -242,7 +244,7 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
             <View style={[styles.settingRow, { marginBottom: 16 }]}>
               <View>
                 <Text style={styles.settingTitle}>RateFlip App</Text>
-                <Text style={styles.settingSubtitle}>Version {packageJson.version}</Text>
+                <Text style={styles.settingSubtitle}>Version {appVersion}</Text>
               </View>
             </View>
             <TouchableOpacity
