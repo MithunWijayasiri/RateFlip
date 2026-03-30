@@ -8,10 +8,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  TextInput,
-  TouchableWithoutFeedback,
-  FlatList,
   ScrollView,
   Linking,
   Switch,
@@ -22,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS } from '../constants/currencies';
 import { CurrencyInfo } from '../api/exchangeApi';
+import CurrencyPickerModal from '../components/CurrencyPickerModal';
 
 import Constants from 'expo-constants';
 
@@ -59,7 +56,6 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   type UpdateStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'error';
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
@@ -108,7 +104,6 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const openPicker = (index: number) => {
     triggerHaptic();
     setPickerTarget(index);
-    setSearchQuery('');
     setPickerVisible(true);
   };
 
@@ -121,16 +116,6 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
     AsyncStorage.setItem('@setting_default_slots', JSON.stringify(newSlots)).catch(() => {});
     setPickerVisible(false);
   };
-
-  const filteredCurrencies = useMemo(
-    () =>
-      currenciesList.filter(
-        (c) =>
-          c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [searchQuery, currenciesList]
-  );
 
   useEffect(() => {
     const handleBackPress = () => {
@@ -305,48 +290,12 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
         </View>
       </ScrollView>
 
-      {/* Currency Picker Modal */}
-      <Modal
+      <CurrencyPickerModal
         visible={pickerVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
-      >
-        <TouchableWithoutFeedback onPress={() => { setPickerVisible(false); setSearchQuery(''); }}>
-          <View style={styles.modalOverlay} />
-        </TouchableWithoutFeedback>
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Select Currency</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search currency..."
-            placeholderTextColor={colors.textPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
-          <FlatList
-            data={filteredCurrencies}
-            keyExtractor={(item) => item.code}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
-            indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.currencyItem}
-                onPress={() => selectCurrency(item.code)}
-              >
-                <Text style={styles.currencyCode}>{item.code}</Text>
-                <Text style={styles.currencyName}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.noResults}>No currencies found</Text>
-            }
-          />
-        </View>
-      </Modal>
+        currencies={currenciesList}
+        onSelect={selectCurrency}
+        onClose={() => setPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -487,61 +436,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       height: 1,
       backgroundColor: colors.borderSubtle,
     },
-    // Modal Styles added
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-    },
-    modalSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 16,
-      paddingHorizontal: 16,
-      maxHeight: '60%',
-    },
-    modalTitle: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '600',
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    searchInput: {
-      backgroundColor: colors.surfaceRaised,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      color: colors.textPrimary,
-      fontSize: 14,
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-    },
-    noResults: {
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginTop: 24,
-      fontSize: 14,
-    },
-    currencyItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceRaised,
-    },
-    currencyCode: {
-      color: colors.textPrimary,
-      fontWeight: '700',
-      fontSize: 16,
-      width: 56,
-    },
-    currencyName: {
-      color: colors.textSecondary,
-      fontSize: 14,
-    },
-    // About Section added
+    // About Section
     githubBtn: {
       backgroundColor: colors.surfaceRaised,
       paddingVertical: 12,
