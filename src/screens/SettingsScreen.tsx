@@ -2,27 +2,26 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   BackHandler,
   Platform,
-  SafeAreaView,
-  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  TextInput,
-  TouchableWithoutFeedback,
-  FlatList,
   ScrollView,
   Linking,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemePreference, DecimalsPreference } from '../context/ThemeContext';
 import { DEFAULT_SLOTS } from '../constants/currencies';
 import { CurrencyInfo } from '../api/exchangeApi';
+import CurrencyPickerModal from '../components/CurrencyPickerModal';
 
-const packageJson = require('../../package.json');
+import Constants from 'expo-constants';
+
+const appVersion = Constants.expoConfig?.version ?? '—';
 
 interface Props {
   onClose: () => void;
@@ -56,7 +55,32 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const [slots, setSlots] = useState<string[]>(DEFAULT_SLOTS);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  type UpdateStatus = 'idle' | 'checking' | 'up-to-date' | 'available' | 'error';
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle');
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+
+  const checkForUpdates = useCallback(async () => {
+    triggerHaptic();
+    setUpdateStatus('checking');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch('https://api.github.com/repos/MithunWijayasiri/RateFlip/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' },
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json() as { tag_name: string };
+      const latest = data.tag_name.replace(/^v/, '');
+      setLatestVersion(latest);
+      setUpdateStatus(latest === appVersion ? 'up-to-date' : 'available');
+    } catch {
+      setUpdateStatus('error');
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, [triggerHaptic]);
 
   useEffect(() => {
     AsyncStorage.getItem('@setting_default_slots').then((saved) => {
@@ -84,7 +108,6 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
   const openPicker = (index: number) => {
     triggerHaptic();
     setPickerTarget(index);
-    setSearchQuery('');
     setPickerVisible(true);
   };
 
@@ -97,16 +120,6 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
     AsyncStorage.setItem('@setting_default_slots', JSON.stringify(newSlots)).catch(() => {});
     setPickerVisible(false);
   };
-
-  const filteredCurrencies = useMemo(
-    () =>
-      currenciesList.filter(
-        (c) =>
-          c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [searchQuery, currenciesList]
-  );
 
   useEffect(() => {
     const handleBackPress = () => {
@@ -242,7 +255,7 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
             <View style={[styles.settingRow, { marginBottom: 16 }]}>
               <View>
                 <Text style={styles.settingTitle}>RateFlip App</Text>
-                <Text style={styles.settingSubtitle}>Version {packageJson.version}</Text>
+                <Text style={styles.settingSubtitle}>Version {appVersion}</Text>
               </View>
             </View>
             <TouchableOpacity
@@ -252,52 +265,41 @@ export default function SettingsScreen({ onClose, currenciesList }: Props) {
             >
               <Text style={styles.githubBtnText}>View Source on GitHub</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.checkUpdateBtn, updateStatus === 'checking' && { opacity: 0.7 }]}
+              activeOpacity={0.7}
+              disabled={updateStatus === 'checking'}
+              onPress={checkForUpdates}
+            >
+              {updateStatus === 'checking' ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.checkUpdateBtnText}>Check for Updates</Text>
+              )}
+            </TouchableOpacity>
+            {updateStatus === 'up-to-date' && (
+              <Text style={[styles.updateStatusText, { color: colors.accent }]}>You're up to date</Text>
+            )}
+            {updateStatus === 'available' && (
+              <TouchableOpacity onPress={() => { triggerHaptic(); Linking.openURL('https://github.com/MithunWijayasiri/RateFlip/releases/latest'); }}>
+                <Text style={[styles.updateStatusText, { color: colors.accent }]}>
+                  Version {latestVersion} available — tap to open
+                </Text>
+              </TouchableOpacity>
+            )}
+            {updateStatus === 'error' && (
+              <Text style={[styles.updateStatusText, { color: colors.error }]}>Failed to check for updates</Text>
+            )}
           </View>
         </View>
       </ScrollView>
 
-      {/* Currency Picker Modal */}
-      <Modal
+      <CurrencyPickerModal
         visible={pickerVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
-      >
-        <TouchableWithoutFeedback onPress={() => { setPickerVisible(false); setSearchQuery(''); }}>
-          <View style={styles.modalOverlay} />
-        </TouchableWithoutFeedback>
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Select Currency</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search currency..."
-            placeholderTextColor={colors.textPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
-          <FlatList
-            data={filteredCurrencies}
-            keyExtractor={(item) => item.code}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
-            indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.currencyItem}
-                onPress={() => selectCurrency(item.code)}
-              >
-                <Text style={styles.currencyCode}>{item.code}</Text>
-                <Text style={styles.currencyName}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.noResults}>No currencies found</Text>
-            }
-          />
-        </View>
-      </Modal>
+        currencies={currenciesList}
+        onSelect={selectCurrency}
+        onClose={() => setPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -307,7 +309,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
     },
     header: {
       flexDirection: 'row',
@@ -438,61 +439,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       height: 1,
       backgroundColor: colors.borderSubtle,
     },
-    // Modal Styles added
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-    },
-    modalSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 16,
-      paddingHorizontal: 16,
-      maxHeight: '60%',
-    },
-    modalTitle: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '600',
-      marginBottom: 12,
-      textAlign: 'center',
-    },
-    searchInput: {
-      backgroundColor: colors.surfaceRaised,
-      borderRadius: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      color: colors.textPrimary,
-      fontSize: 14,
-      marginBottom: 8,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-    },
-    noResults: {
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginTop: 24,
-      fontSize: 14,
-    },
-    currencyItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceRaised,
-    },
-    currencyCode: {
-      color: colors.textPrimary,
-      fontWeight: '700',
-      fontSize: 16,
-      width: 56,
-    },
-    currencyName: {
-      color: colors.textSecondary,
-      fontSize: 14,
-    },
-    // About Section added
+    // About Section
     githubBtn: {
       backgroundColor: colors.surfaceRaised,
       paddingVertical: 12,
@@ -503,6 +450,26 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       color: colors.textPrimary,
       fontWeight: '600',
       fontSize: 14,
+    },
+    checkUpdateBtn: {
+      backgroundColor: colors.surfaceRaised,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+      marginTop: 8,
+    },
+    checkUpdateBtnText: {
+      color: colors.accent,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    updateStatusText: {
+      textAlign: 'center',
+      fontSize: 13,
+      marginTop: 10,
+      fontWeight: '500',
     },
   });
 }

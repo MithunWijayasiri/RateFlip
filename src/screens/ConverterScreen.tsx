@@ -3,28 +3,28 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Easing,
-  FlatList,
-  Modal,
   Platform,
-  Pressable,
-  SafeAreaView,
-  StatusBar as RNStatusBar,
   StyleSheet,
   Text,
-  TextInput,
   ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getRates, forceRefreshRates, convert, Rates, getCurrenciesList, CurrencyInfo } from '../api/exchangeApi';
 import CurrencySlot from '../components/CurrencySlot';
+import CurrencyPickerModal from '../components/CurrencyPickerModal';
 import NumPad from '../components/NumPad';
 import SettingsScreen from './SettingsScreen';
 import { DEFAULT_SLOTS, POPULAR_CURRENCIES } from '../constants/currencies';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const REFRESH_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const LAST_REFRESH_KEY = '@last_manual_refresh';
 
 export default function ConverterScreen() {
   const { colors, resolvedTheme, decimals, hapticsEnabled } = useTheme();
@@ -48,11 +48,13 @@ export default function ConverterScreen() {
   const [pickerTarget, setPickerTarget] = useState<number | null>(null);
   const [lastFetched, setLastFetched] = useState<string>('');
   const [isCached, setIsCached] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const spinAnim = React.useRef(new Animated.Value(0)).current;
-  const loopAnim = React.useRef<Animated.CompositeAnimation | null>(null);
+  const [refreshCooldownSecs, setRefreshCooldownSecs] = useState(0);
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const loopAnim = useRef<Animated.CompositeAnimation | null>(null);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cooldownEndTimeRef = useRef<number | null>(null);
 
   const startSpin = useCallback(() => {
     loopAnim.current?.stop();
@@ -69,10 +71,44 @@ export default function ConverterScreen() {
   }, [spinAnim]);
 
   useEffect(() => {
+    // Re-sync the cooldown display whenever the app returns to the foreground
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && cooldownEndTimeRef.current !== null) {
+        const remaining = Math.ceil((cooldownEndTimeRef.current - Date.now()) / 1000);
+        setRefreshCooldownSecs(remaining > 0 ? remaining : 0);
+        if (remaining <= 0) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          cooldownIntervalRef.current = null;
+          cooldownEndTimeRef.current = null;
+        }
+      }
+    });
     return () => {
-      // Clean up the animation safely on unmount
+      sub.remove();
+      // Clean up the animation and cooldown timer safely on unmount
       loopAnim.current?.stop();
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
     };
+  }, []);
+
+  const startCooldown = useCallback((initialSecs: number) => {
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    cooldownEndTimeRef.current = Date.now() + initialSecs * 1000;
+    // Derive remaining time from the end timestamp on every tick so background
+    // throttling of JS timers doesn't leave a stale non-zero countdown.
+    const tick = () => {
+      const remaining = Math.ceil(((cooldownEndTimeRef.current ?? 0) - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(cooldownIntervalRef.current!);
+        cooldownIntervalRef.current = null;
+        cooldownEndTimeRef.current = null;
+        setRefreshCooldownSecs(0);
+      } else {
+        setRefreshCooldownSecs(remaining);
+      }
+    };
+    tick();
+    cooldownIntervalRef.current = setInterval(tick, 1000);
   }, []);
 
   useEffect(() => {
@@ -127,6 +163,16 @@ export default function ConverterScreen() {
       }
     } catch {}
 
+    // Restore cooldown if user refreshed recently in a prior session
+    try {
+      const lastRefreshStr = await AsyncStorage.getItem(LAST_REFRESH_KEY);
+      if (lastRefreshStr) {
+        const elapsed = Date.now() - parseInt(lastRefreshStr, 10);
+        const remainingSecs = Math.ceil((REFRESH_COOLDOWN_MS - elapsed) / 1000);
+        if (remainingSecs > 0) startCooldown(remainingSecs);
+      }
+    } catch {}
+
     const currentSlots = await fetchSettings(list);
     loadRates(currentSlots);
   }
@@ -156,7 +202,7 @@ export default function ConverterScreen() {
   }
 
   async function handleManualRefresh() {
-    if (isRefreshing) return;
+    if (isRefreshing || refreshCooldownSecs > 0) return;
     try {
       setIsRefreshing(true);
       startSpin();
@@ -173,6 +219,9 @@ export default function ConverterScreen() {
         })
       );
       recalculate(activeSlot, values[activeSlot] ?? '', slots, r);
+      // Persist timestamp and start the 5-minute cooldown
+      await AsyncStorage.setItem(LAST_REFRESH_KEY, Date.now().toString());
+      startCooldown(REFRESH_COOLDOWN_MS / 1000);
     } catch (e: any) {
       setError(e.message ?? 'Failed to refresh rates');
     } finally {
@@ -285,7 +334,6 @@ export default function ConverterScreen() {
   function openPicker(slotIdx: number) {
     triggerHaptic();
     setPickerTarget(slotIdx);
-    setSearchQuery('');
     setPickerVisible(true);
   }
 
@@ -296,7 +344,6 @@ export default function ConverterScreen() {
     newSlots[pickerTarget] = code;
     setSlots(newSlots);
     setPickerVisible(false);
-    setSearchQuery('');
     if (rates) recalculate(activeSlot, values[activeSlot], newSlots, rates);
   }, [pickerTarget, slots, rates, activeSlot, values]);
 
@@ -307,31 +354,6 @@ export default function ConverterScreen() {
     slots.forEach((s) => { count[s] = (count[s] ?? 0) + 1; });
     return new Set(Object.keys(count).filter((k) => count[k] > 1));
   }, [slots]);
-
-  const flatListRef = useRef<FlatList>(null);
-  const filteredCurrencies = useMemo(
-    () =>
-      currenciesList.filter(
-        (c) =>
-          c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    [searchQuery, currenciesList]
-  );
-
-  const renderCurrencyItem = useCallback(
-    ({ item }: { item: { code: string; name: string } }) => (
-      <Pressable
-        style={styles.currencyItem}
-        onPress={() => selectCurrency(item.code)}
-        android_ripple={{ color: colors.surfaceRaised }}
-      >
-        <Text style={styles.currencyItemCode}>{item.code}</Text>
-        <Text style={styles.currencyItemText}>{item.name}</Text>
-      </Pressable>
-    ),
-    [selectCurrency, styles, colors]
-  );
 
   if (showSettings) {
     return (
@@ -402,15 +424,23 @@ export default function ConverterScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[styles.refreshBtn, { flexDirection: 'row', alignItems: 'center' }]}
+          style={[
+            styles.refreshBtn,
+            { flexDirection: 'row', alignItems: 'center' },
+            (isRefreshing || refreshCooldownSecs > 0) && { opacity: 0.45 },
+          ]}
           onPress={() => { triggerHaptic(); handleManualRefresh(); }}
-          disabled={isRefreshing}
+          disabled={isRefreshing || refreshCooldownSecs > 0}
         >
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
             <Text style={[styles.refreshText, { marginRight: 6 }]}>↻</Text>
           </Animated.View>
           <Text style={styles.refreshText}>
-            {isRefreshing ? 'Refreshing...' : 'Refresh Rates'}
+            {isRefreshing
+              ? 'Refreshing...'
+              : refreshCooldownSecs > 0
+                ? `Available in ${Math.floor(refreshCooldownSecs / 60)}m ${String(refreshCooldownSecs % 60).padStart(2, '0')}s`
+                : 'Refresh Rates'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -421,60 +451,12 @@ export default function ConverterScreen() {
         onClear={handleClear}
       />
 
-      {/* Currency Picker Modal - Full Screen */}
-      <Modal
+      <CurrencyPickerModal
         visible={pickerVisible}
-        animationType="slide"
-        onRequestClose={() => { setPickerVisible(false); setSearchQuery(''); }}
-      >
-        <SafeAreaView style={styles.pickerContainer}>
-          {/* Header */}
-          <View style={styles.pickerHeader}>
-            <TouchableOpacity
-              style={styles.pickerBackBtn}
-              onPress={() => { triggerHaptic(); setPickerVisible(false); setSearchQuery(''); }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text style={styles.pickerBackIcon}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.pickerTitle}>Select currency</Text>
-          </View>
-
-          {/* Search bar */}
-          <View style={styles.searchBarWrapper}>
-            <Text style={styles.searchIcon}>⌕</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search..."
-              placeholderTextColor={colors.textPlaceholder}
-              selectionColor={colors.accent}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              returnKeyType="search"
-            />
-          </View>
-
-          {/* Currency list */}
-          <View style={styles.pickerBody}>
-            <FlatList
-              ref={flatListRef}
-              data={filteredCurrencies}
-              keyExtractor={(item) => item.code}
-              keyboardShouldPersistTaps="handled"
-              renderItem={renderCurrencyItem}
-              showsVerticalScrollIndicator={true}
-              indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
-              ListEmptyComponent={
-                <Text style={styles.noResults}>No currencies found</Text>
-              }
-              onScrollToIndexFailed={() => {}}
-            />
-          </View>
-        </SafeAreaView>
-      </Modal>
+        currencies={currenciesList}
+        onSelect={selectCurrency}
+        onClose={() => setPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -484,7 +466,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight ?? 0) + 12 : 0,
     },
     topContent: {
       flex: 1,
@@ -576,84 +557,6 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
     refreshText: {
       color: colors.textMuted,
       fontSize: 13,
-    },
-    // Full-screen picker styles
-    pickerContainer: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    pickerHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 16,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    pickerBackBtn: {
-      marginRight: 16,
-    },
-    pickerBackIcon: {
-      color: colors.textPrimary,
-      fontSize: 24,
-      lineHeight: 28,
-    },
-    pickerTitle: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '600',
-    },
-    searchBarWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surfaceRaised,
-      borderRadius: 14,
-      marginHorizontal: 16,
-      marginTop: 6,
-      marginBottom: 10,
-      paddingHorizontal: 16,
-      paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.borderSubtle,
-    },
-    searchIcon: {
-      color: colors.textMuted,
-      fontSize: 22,
-      marginRight: 10,
-    },
-    searchInput: {
-      flex: 1,
-      color: colors.textPrimary,
-      fontSize: 15,
-      paddingVertical: 0,
-    },
-    pickerBody: {
-      flex: 1,
-    },
-    noResults: {
-      color: colors.textMuted,
-      textAlign: 'center',
-      marginTop: 40,
-      fontSize: 14,
-    },
-    currencyItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 20,
-    },
-    currencyItemCode: {
-      color: colors.textPrimary,
-      fontWeight: '700',
-      fontSize: 16,
-      width: 50,
-      marginRight: 10,
-    },
-    currencyItemText: {
-      color: colors.textSecondary,
-      fontSize: 15,
-      flex: 1,
     },
   });
 }
