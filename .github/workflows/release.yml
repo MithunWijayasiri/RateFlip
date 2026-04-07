@@ -46,6 +46,15 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli@14
 
+      # ── 5. Update App Version ────────────────────────────────────────────
+      - name: Update App Version
+        run: |
+          CLEAN_VERSION="${{ github.event.inputs.version }}"
+          CLEAN_VERSION="${CLEAN_VERSION#v}"
+          npm version "$CLEAN_VERSION" --no-git-tag-version --allow-same-version
+          tmp=$(mktemp)
+          jq --arg v "$CLEAN_VERSION" '.expo.version = $v' app.json > "$tmp" && mv "$tmp" app.json
+
       # ── 6. Build APK ──────────────────────────────────────────────────────
       - name: Build APK via EAS (Local)
         env:
