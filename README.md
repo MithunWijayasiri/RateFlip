@@ -94,12 +94,13 @@ To trigger: go to **Actions → Release — Build & Publish APK → Run workflow
 
 ## License
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)** license.
+This project is licensed under the **Apache License 2.0**.
 
 ### Key Terms:
 
-- **Attribution:** You must give appropriate credit, provide a link to the license, and indicate if changes were made.
-- **Non-Commercial:** You may not use the material for commercial purposes (e.g., you cannot release a paid version or a version with ads).
-- **ShareAlike:** If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+- **Commercial use allowed:** You can use the software for personal and commercial purposes.
+- **Modification and distribution:** You can modify and redistribute the source.
+- **License notice required:** Keep the Apache 2.0 license text and notices in redistributions.
+- **No warranty:** The software is provided "as is," without warranties or conditions.
 
 See the [LICENSE](LICENSE) file for the full legal text.
