@@ -1,11 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
+  Animated,
+  Platform,
   Pressable,
+  StyleSheet,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { formatCurrencyValue } from '../utils/format';
 import { useTheme } from '../context/ThemeContext';
 
@@ -28,6 +32,32 @@ export default function CurrencySlot({
 }: Props) {
   const { colors, triggerHaptic } = useTheme();
   const formattedValue = formatCurrencyValue(value);
+  const cursorOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isActive) {
+      const blink = Animated.loop(
+        Animated.sequence([
+          Animated.timing(cursorOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(cursorOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ])
+      );
+      blink.start();
+      return () => blink.stop();
+    }
+    cursorOpacity.setValue(1);
+  }, [isActive]);
+
+  const handleLongPress = useCallback(async () => {
+    if (!value) return;
+    triggerHaptic();
+    try {
+      await Clipboard.setStringAsync(value);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(`${currencyCode} ${formattedValue} copied`, ToastAndroid.SHORT);
+      }
+    } catch {}
+  }, [value, currencyCode, formattedValue, triggerHaptic]);
 
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -38,6 +68,11 @@ export default function CurrencySlot({
         if (!isActive) triggerHaptic();
         onFocus();
       }}
+      onLongPress={handleLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${currencyCode}, ${formattedValue || '0'}`}
+      accessibilityState={{ selected: isActive }}
+      accessibilityHint="Tap to select, long press to copy"
       style={({ pressed }) => [
         styles.row,
         isDuplicate && styles.duplicateRow,
@@ -65,7 +100,7 @@ export default function CurrencySlot({
         >
           {formattedValue || '0'}
         </Text>
-        {isActive && <View style={styles.cursor} />}
+        {isActive && <Animated.View style={[styles.cursor, { opacity: cursorOpacity }]} />}
       </View>
     </Pressable>
   );
@@ -78,7 +113,7 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       alignItems: 'center',
       backgroundColor: colors.surface,
       borderRadius: 12,
-      marginVertical: 8,
+      marginVertical: 4,
       paddingHorizontal: 12,
       paddingVertical: 13,
       borderWidth: 1,

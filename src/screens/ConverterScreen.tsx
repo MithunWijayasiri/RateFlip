@@ -115,6 +115,8 @@ export default function ConverterScreen() {
     if (rates) {
       recalculate(activeSlot, values[activeSlot] || '', slots, rates);
     }
+    // Intentionally limited deps: only re-run when decimal precision changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decimals]);
 
   const spin = spinAnim.interpolate({
@@ -294,11 +296,11 @@ export default function ConverterScreen() {
     // Prevent multiple decimal points
     if (key === '.' && current.includes('.')) return;
 
-    // Limit to two decimal places
+    const maxInputDecimals = decimals === '4' ? 4 : 2;
     if (current.includes('.')) {
       const decimalPart = current.split('.')[1] || '';
-      if (key === '00' && decimalPart.length >= 1) return;
-      if (decimalPart.length >= 2) return;
+      if (key === '00' && decimalPart.length + 2 > maxInputDecimals) return;
+      if (decimalPart.length >= maxInputDecimals) return;
     }
 
     const next = current + key;
@@ -329,6 +331,21 @@ export default function ConverterScreen() {
   function handleClear() {
     setIsNewInput(false);
     if (rates) recalculate(activeSlot, '', slots, rates);
+  }
+
+  function handleSwap(idx1: number, idx2: number) {
+    triggerHaptic();
+    const newSlots = [...slots];
+    [newSlots[idx1], newSlots[idx2]] = [newSlots[idx2], newSlots[idx1]];
+    const newValues = [...values];
+    [newValues[idx1], newValues[idx2]] = [newValues[idx2], newValues[idx1]];
+    let newActiveSlot = activeSlot;
+    if (activeSlot === idx1) newActiveSlot = idx2;
+    else if (activeSlot === idx2) newActiveSlot = idx1;
+    setSlots(newSlots);
+    setValues(newValues);
+    setActiveSlot(newActiveSlot);
+    setIsNewInput(true);
   }
 
   function openPicker(slotIdx: number) {
@@ -407,15 +424,27 @@ export default function ConverterScreen() {
 
         <View style={styles.slots}>
           {slots.map((code, i) => (
-            <CurrencySlot
-              key={i}
-              currencyCode={code}
-              value={values[i]}
-              isActive={activeSlot === i}
-              isDuplicate={duplicateCodes.has(code)}
-              onFocus={() => handleFocus(i)}
-              onPressCurrency={() => openPicker(i)}
-            />
+            <React.Fragment key={i}>
+              <CurrencySlot
+                currencyCode={code}
+                value={values[i]}
+                isActive={activeSlot === i}
+                isDuplicate={duplicateCodes.has(code)}
+                onFocus={() => handleFocus(i)}
+                onPressCurrency={() => openPicker(i)}
+              />
+              {i < slots.length - 1 && (
+                <TouchableOpacity
+                  style={styles.swapBtn}
+                  activeOpacity={0.7}
+                  onPress={() => handleSwap(i, i + 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Swap ${slots[i]} and ${slots[i + 1]}`}
+                >
+                  <Text style={styles.swapIcon}>⇅</Text>
+                </TouchableOpacity>
+              )}
+            </React.Fragment>
           ))}
         </View>
 
@@ -521,7 +550,16 @@ function makeStyles(colors: ReturnType<typeof useTheme>['colors']) {
       textAlign: 'center',
     },
     slots: {
-      gap: 4,
+      gap: 2,
+    },
+    swapBtn: {
+      alignSelf: 'center',
+      paddingVertical: 2,
+      paddingHorizontal: 16,
+    },
+    swapIcon: {
+      color: colors.textMuted,
+      fontSize: 18,
     },
     loadingText: {
       color: colors.textSecondary,

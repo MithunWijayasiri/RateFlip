@@ -58,6 +58,8 @@ export default function CurrencyPickerModal({ visible, currencies, onSelect, onC
         style={styles.currencyItem}
         onPress={() => handleSelect(item.code)}
         android_ripple={{ color: colors.surfaceRaised }}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.code}, ${item.name}`}
       >
         <Text style={styles.currencyItemCode}>{item.code}</Text>
         <Text style={styles.currencyItemText}>{item.name}</Text>
@@ -112,6 +114,7 @@ export default function CurrencyPickerModal({ visible, currencies, onSelect, onC
             autoCorrect={false}
             clearButtonMode="while-editing"
             returnKeyType="search"
+            accessibilityLabel="Search currencies"
           />
         </View>
 
@@ -122,6 +125,7 @@ export default function CurrencyPickerModal({ visible, currencies, onSelect, onC
           keyExtractor={(item) => item.code}
           keyboardShouldPersistTaps="handled"
           renderItem={renderItem}
+          getItemLayout={(_, index) => ({ length: 52, offset: 52 * index, index })}
           showsVerticalScrollIndicator
           indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
           ListEmptyComponent={<Text style={styles.noResults}>No currencies found</Text>}
