@@ -37,6 +37,8 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
                 style={styles.key}
                 activeOpacity={0.6}
                 onPress={() => handlePress(() => onKeyPress(key))}
+                accessibilityRole="button"
+                accessibilityLabel={key === '.' ? 'Decimal point' : key}
               >
                 <Text style={styles.keyText}>{key}</Text>
               </TouchableOpacity>
@@ -51,6 +53,8 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
           style={[styles.actionKey, styles.clearKey]}
           activeOpacity={0.6}
           onPress={() => handlePress(onClear)}
+          accessibilityRole="button"
+          accessibilityLabel="Clear all"
         >
           <Text style={styles.actionText}>AC</Text>
         </TouchableOpacity>
@@ -59,6 +63,8 @@ export default function NumPad({ onKeyPress, onBackspace, onClear }: NumPadProps
           style={[styles.actionKey, styles.backspaceKey]}
           activeOpacity={0.6}
           onPress={() => handlePress(onBackspace)}
+          accessibilityRole="button"
+          accessibilityLabel="Delete last digit"
         >
           <Text style={styles.backspaceIcon}>⌫</Text>
         </TouchableOpacity>
