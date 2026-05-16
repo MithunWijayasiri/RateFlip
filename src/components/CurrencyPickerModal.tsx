@@ -125,7 +125,6 @@ export default function CurrencyPickerModal({ visible, currencies, onSelect, onC
           keyExtractor={(item) => item.code}
           keyboardShouldPersistTaps="handled"
           renderItem={renderItem}
-          getItemLayout={(_, index) => ({ length: 52, offset: 52 * index, index })}
           showsVerticalScrollIndicator
           indicatorStyle={resolvedTheme === 'dark' ? 'white' : 'default'}
           ListEmptyComponent={<Text style={styles.noResults}>No currencies found</Text>}
