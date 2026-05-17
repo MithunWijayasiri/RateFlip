@@ -10,9 +10,6 @@
 - **Major fiat & crypto currencies** — dynamically fetched and cached locally
 - **Automatic fallback** — switches to a backup API if the primary is unavailable
 - **Theming** — switch between Device, Light, and Dark modes
-- **Zero UI library bloat** — no heavy third-party component libraries
-
----
 
 ## Tech Stack
 
@@ -23,8 +20,6 @@
 | Fallback API      | [Frankfurter](https://www.frankfurter.dev/)                                       |
 | Build             | EAS Build (local, Universal APK)                                                  |
 | CI/CD             | GitHub Actions                                                                    |
-
----
 
 ## Getting Started
 
@@ -43,8 +38,6 @@ npx expo start
 ```
 
 Scan the QR code with **Expo Go**. Your phone and PC must be on the same Wi-Fi network.
-
----
 
 ## Project Structure
 
@@ -70,8 +63,6 @@ src/
 App.tsx                      # Entry point
 ```
 
----
-
 ## Release
 
 Releases are built and published via a **manual** GitHub Actions workflow (`release.yml`).  
@@ -79,24 +70,12 @@ It produces a signed Universal APK using EAS Build (local) and attaches it to a 
 
 To trigger: go to **Actions → Release — Build & Publish APK → Run workflow** and provide the version tag, source branch, and optional release notes.
 
----
-
 ## Credits
 
 - **[Sandun Dayarathne](https://www.instagram.com/sandundayarathne/)** — Designed the app icon and visual identity.
 - **[Tanvir](https://github.com/tanvirr007)** — Provided product feedback and ongoing support.
 
----
-
 ## License
 
 This project is licensed under the **Apache License 2.0**.
-
-### Key Terms:
-
-- **Commercial use allowed:** You can use the software for personal and commercial purposes.
-- **Modification and distribution:** You can modify and redistribute the source.
-- **License notice required:** Keep the Apache 2.0 license text and notices in redistributions.
-- **No warranty:** The software is provided "as is," without warranties or conditions.
-
 See the [LICENSE](LICENSE) file for the full legal text.
