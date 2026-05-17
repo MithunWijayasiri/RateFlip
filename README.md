@@ -1,18 +1,14 @@
 # RateFlip
 
-A minimalist, open-source currency converter for Android built with **React Native** and **Expo**.
-
 ![RateFlip Banner](assets/RateFlip_Banner.png)
 ---
 
 ## Features
 
 - **Live exchange rates** — fetched daily, no API key required
-- **Instant conversion** — all slots update as you type
 - **Custom in-app numpad** — no system keyboard; clean numeric input
 - **Major fiat & crypto currencies** — dynamically fetched and cached locally
 - **Automatic fallback** — switches to a backup API if the primary is unavailable
-- **Duplicate slot indicator** — highlights slots sharing the same currency
 - **Theming** — switch between Device, Light, and Dark modes
 - **Zero UI library bloat** — no heavy third-party component libraries
 
