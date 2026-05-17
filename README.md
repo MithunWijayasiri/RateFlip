@@ -1,8 +1,8 @@
 # RateFlip
 
-A minimalist, open-source currency converter for Android built with **React Native** and **Expo**.  
-Type in any currency slot and all others update instantly.
+A minimalist, open-source currency converter for Android built with **React Native** and **Expo**.
 
+![RateFlip Banner](assets/RateFlip_Banner.png)
 ---
 
 ## Features
